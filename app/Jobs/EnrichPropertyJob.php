@@ -29,24 +29,13 @@ class EnrichPropertyJob implements ShouldQueue
     public function handle(PropertyEnrichmentService $enrichmentService): void
     {
         try {
-            Log::info('Starting property enrichment', [
-                'property_id' => $this->property->id,
-                'address' => $this->property->address,
-            ]);
-
             $enrichmentService->performEnrichment($this->property, $this->forceFresh);
-
-            Log::info('Property enrichment completed', [
-                'property_id' => $this->property->id,
-            ]);
         } catch (\Exception $e) {
             Log::error('Property enrichment job failed', [
                 'property_id' => $this->property->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
-            // Re-throw to mark job as failed
             throw $e;
         }
     }

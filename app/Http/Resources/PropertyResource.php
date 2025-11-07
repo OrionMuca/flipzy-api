@@ -50,8 +50,13 @@ class PropertyResource extends JsonResource
                 'potential_profit' => $this->potential_profit,
             ],
             
-            // Images
-            'images' => PropertyImageResource::collection($this->whenLoaded('images')),
+            // Images (ordered by 'order' field - maintained by Property model relationship)
+            'images' => PropertyImageResource::collection(
+                $this->whenLoaded('images', function () {
+                    // Ensure images are sorted by order (relationship already does this, but explicit for clarity)
+                    return $this->images->sortBy('order')->values();
+                })
+            ),
             'primary_image' => $this->when(
                 $this->relationLoaded('images'),
                 fn() => $this->images->where('is_primary', true)->first() 

@@ -23,17 +23,17 @@ class AttomService
     /**
      * Get property details from ATTOM API
      * 
-     * ATTOM API accepts:
-     * - address1: Street address (e.g., "4529 WINONA CT")
-     * - address2: City, State, ZIP combined (e.g., "DENVER, CO 80212")
-     * OR
-     * - attomid: Direct ATTOM ID lookup
+     * @param string $address Street address
+     * @param string|null $city City name
+     * @param string|null $state State code (2 letters)
+     * @param string|null $zip ZIP code
+     * @param bool $forceFresh Bypass cache and fetch fresh data
+     * @return array|null Property data or null if not found/error
      */
     public function getPropertyDetails(string $address, ?string $city = null, ?string $state = null, ?string $zip = null, bool $forceFresh = false): ?array
     {
         $cacheKey = "attom:property:{$address}:{$city}:{$state}:{$zip}";
         
-        // If forcing fresh data, clear cache first
         if ($forceFresh) {
             Cache::forget($cacheKey);
         }
@@ -42,19 +42,10 @@ class AttomService
             try {
                 $startTime = microtime(true);
                 
-                // Build query parameters - ATTOM uses address1 and address2 format
-                $params = [
-                    'address1' => trim($address),
-                ];
+                $params = ['address1' => trim($address)];
                 
-                // Build address2: "City, State ZIP" format
-                // ATTOM expects: "DENVER, CO 80212" or "DENVER, CO" if no zip
                 if ($city && $state) {
-                    $address2Parts = [trim($city), trim($state)];
-                    if ($zip) {
-                        $address2Parts[] = trim($zip);
-                    }
-                    $params['address2'] = implode(', ', $address2Parts);
+                    $params['address2'] = trim($city) . ', ' . trim($state);
                 }
 
                 $response = Http::timeout($this->timeout)
@@ -64,27 +55,18 @@ class AttomService
                     ])
                     ->get("{$this->baseUrl}/propertyapi/v1.0.0/property/detail", $params);
 
-                $responseTime = (microtime(true) - $startTime) * 1000; // Convert to milliseconds
-
+                $responseTime = (microtime(true) - $startTime) * 1000;
                 $httpStatusCode = $response->status();
                 $data = $response->json();
                 
-                // ATTOM API returns status in the response body, not just HTTP status
-                // Check the status.code in the response body
                 $statusCode = $data['status']['code'] ?? null;
                 $statusMessage = $data['status']['msg'] ?? 'Unknown';
                 $total = $data['status']['total'] ?? 0;
-                
-                // ATTOM status codes:
-                // 0 = SuccessWithResult (property found)
-                // 400 = SuccessWithoutResult (no property found, but API call was successful)
-                // Other codes = actual errors
                 
                 $hasResult = ($statusCode === 0 && $total > 0);
                 $noResult = ($statusCode === 400 && $statusMessage === 'SuccessWithoutResult');
                 $isError = (!$hasResult && !$noResult && $statusCode !== 0);
 
-                // Log API call (property will be passed when called from enrichment service)
                 $this->logApiCall(
                     'attom',
                     '/propertyapi/v1.0.0/property/detail',
@@ -93,9 +75,9 @@ class AttomService
                     $response->body(),
                     $httpStatusCode,
                     (int) $responseTime,
-                    !$isError, // Success if not an error (even if no result)
+                    !$isError,
                     $isError ? $statusMessage : null,
-                    null // Property not available in standalone call
+                    null
                 );
 
                 if ($isError) {
@@ -104,21 +86,14 @@ class AttomService
                         'status_code' => $statusCode,
                         'status_message' => $statusMessage,
                         'request_params' => $params,
-                        'response' => $response->body(),
                     ]);
                     return null;
                 }
 
                 if ($noResult) {
-                    Log::info('ATTOM API: No property found', [
-                        'address1' => $params['address1'] ?? null,
-                        'address2' => $params['address2'] ?? null,
-                        'status_message' => $statusMessage,
-                    ]);
                     return null;
                 }
 
-                // Extract relevant property data (only if we have results)
                 return $this->extractPropertyData($data);
 
             } catch (\Exception $e) {
@@ -212,7 +187,7 @@ class AttomService
 
         return [
             'square_feet' => $buildingSize['bldgsize'] ?? $buildingSize['livingsize'] ?? $buildingSize['universalsize'] ?? null,
-            'lot_size' => ($propertyData['lot']['lotsize2'] ?? null) ? (int)($propertyData['lot']['lotsize2']) : null, // Convert to square feet
+            'lot_size' => ($propertyData['lot']['lotsize2'] ?? null) ? (int)($propertyData['lot']['lotsize2']) : null,
             'year_built' => $summary['yearbuilt'] ?? null,
             'bedrooms' => $buildingRooms['beds'] ?? null,
             'bathrooms' => $buildingRooms['bathstotal'] ?? $buildingRooms['bathsfull'] ?? null,
@@ -224,7 +199,7 @@ class AttomService
             'latitude' => $location['latitude'] ? (float)$location['latitude'] : null,
             'longitude' => $location['longitude'] ? (float)$location['longitude'] : null,
             'attom_id' => $propertyData['identifier']['attomId'] ?? null,
-            'raw_data' => $data, // Store full response
+            'raw_data' => $data,
         ];
     }
 

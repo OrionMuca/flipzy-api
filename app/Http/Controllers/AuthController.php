@@ -8,12 +8,36 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use OpenApi\Attributes as OA;
 
+#[OA\Tag(name: "Authentication")]
 class AuthController extends Controller
 {
     /**
      * Register a new user
      */
+    #[OA\Post(
+        path: "/register",
+        summary: "Register a new user",
+        tags: ["Authentication"],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["name", "email", "password", "password_confirmation", "role"],
+                properties: [
+                    new OA\Property(property: "name", type: "string", example: "John Doe"),
+                    new OA\Property(property: "email", type: "string", format: "email", example: "john@example.com"),
+                    new OA\Property(property: "password", type: "string", format: "password", example: "password123"),
+                    new OA\Property(property: "password_confirmation", type: "string", format: "password", example: "password123"),
+                    new OA\Property(property: "role", type: "string", enum: ["investor", "wholesaler"], example: "investor"),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: "User registered successfully"),
+            new OA\Response(response: 422, description: "Validation error"),
+        ]
+    )]
     public function register(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -56,6 +80,44 @@ class AuthController extends Controller
     /**
      * Login user and create token
      */
+    #[OA\Post(
+        path: "/login",
+        summary: "Login user",
+        tags: ["Authentication"],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["email", "password"],
+                properties: [
+                    new OA\Property(property: "email", type: "string", format: "email", example: "john@example.com"),
+                    new OA\Property(property: "password", type: "string", format: "password", example: "password123"),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Login successful",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "success", type: "boolean", example: true),
+                        new OA\Property(property: "message", type: "string", example: "Login successful"),
+                        new OA\Property(
+                            property: "data",
+                            type: "object",
+                            properties: [
+                                new OA\Property(property: "user", type: "object"),
+                                new OA\Property(property: "access_token", type: "string"),
+                                new OA\Property(property: "token_type", type: "string", example: "Bearer"),
+                            ]
+                        ),
+                    ]
+                )
+            ),
+            new OA\Response(response: 401, description: "Invalid credentials"),
+            new OA\Response(response: 422, description: "Validation error"),
+        ]
+    )]
     public function login(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -96,6 +158,25 @@ class AuthController extends Controller
     /**
      * Get authenticated user
      */
+    #[OA\Get(
+        path: "/user",
+        summary: "Get authenticated user information",
+        tags: ["Authentication"],
+        security: [["bearerAuth" => []]],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "User information",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "success", type: "boolean", example: true),
+                        new OA\Property(property: "data", type: "object"),
+                    ]
+                )
+            ),
+            new OA\Response(response: 401, description: "Unauthenticated"),
+        ]
+    )]
     public function user(Request $request): JsonResponse
     {
         return response()->json([
@@ -109,6 +190,25 @@ class AuthController extends Controller
     /**
      * Logout user (Revoke the token)
      */
+    #[OA\Post(
+        path: "/logout",
+        summary: "Logout user and revoke token",
+        tags: ["Authentication"],
+        security: [["bearerAuth" => []]],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Logout successful",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "success", type: "boolean", example: true),
+                        new OA\Property(property: "message", type: "string", example: "Successfully logged out"),
+                    ]
+                )
+            ),
+            new OA\Response(response: 401, description: "Unauthenticated"),
+        ]
+    )]
     public function logout(Request $request): JsonResponse
     {
         $user = $request->user();

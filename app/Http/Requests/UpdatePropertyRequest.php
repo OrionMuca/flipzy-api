@@ -62,6 +62,11 @@ class UpdatePropertyRequest extends FormRequest
             'is_featured' => 'nullable|boolean',
             'is_verified' => 'nullable|boolean',
             'allow_inquiries' => 'nullable|boolean',
+            
+            // Images (for adding new images during update)
+            'images' => 'nullable|array|max:10',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max per image
+            'primary_image_index' => 'nullable|integer|min:0',
         ];
     }
 }

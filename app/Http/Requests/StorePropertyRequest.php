@@ -32,7 +32,7 @@ class StorePropertyRequest extends FormRequest
             'city' => 'required|string|max:100',
             'state' => 'required|string|size:2',
             'zip_code' => 'required|string|max:10',
-            'country' => 'nullable|string|size:2|default:US',
+            'country' => 'nullable|string|size:2',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             
@@ -53,6 +53,11 @@ class StorePropertyRequest extends FormRequest
             'is_featured' => 'nullable|boolean',
             'is_verified' => 'nullable|boolean',
             'allow_inquiries' => 'nullable|boolean',
+            
+            // Images
+            'images' => 'nullable|array|max:10',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max per image
+            'primary_image_index' => 'nullable|integer|min:0',
         ];
     }
 

@@ -62,7 +62,11 @@ return new class extends Migration
             $table->index(['city', 'state']);
             $table->index('asking_price');
             $table->index('property_type');
-            $table->fullText(['title', 'description', 'address']); // For search
+            
+            // Fulltext index for search (MySQL/PostgreSQL only)
+            if (config('database.default') !== 'sqlite') {
+                $table->fullText(['title', 'description', 'address']);
+            }
         });
     }
 

@@ -33,6 +33,10 @@ class RolePermissionSeeder extends Seeder
             'analytics.view',
             'analytics.view-all',
             
+            // Rehab estimate permissions
+            'estimates.generate',
+            'estimates.view',
+            
             // Admin permissions
             'admin.users.manage',
             'admin.properties.manage',
@@ -55,6 +59,7 @@ class RolePermissionSeeder extends Seeder
             'messages.send',
             'messages.view',
             'analytics.view',
+            'estimates.view', // Can view estimates (access controlled by subscription)
         ]);
 
         $wholesaler = Role::firstOrCreate(['name' => 'wholesaler']);

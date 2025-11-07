@@ -1,59 +1,336 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Flipzy Backend API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Property Management Platform Backend** - Laravel 12 RESTful API
 
-## About Laravel
+[![Laravel](https://img.shields.io/badge/Laravel-12-red.svg)](https://laravel.com)
+[![PHP](https://img.shields.io/badge/PHP-8.2+-blue.svg)](https://php.net)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-blue.svg)](https://postgresql.org)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🚀 Quick Start
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### **Prerequisites**
+- PHP 8.2+
+- PostgreSQL 14+
+- Redis
+- Composer
+- Node.js & NPM
 
-## Learning Laravel
+### **Installation**
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+```bash
+# Clone repository
+git clone <repository-url>
+cd flipzy-backend
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+# Install dependencies
+composer install
+npm install
 
-## Laravel Sponsors
+# Copy environment file
+cp .env.example .env
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+# Generate application key
+php artisan key:generate
 
-### Premium Partners
+# Install Passport
+php artisan passport:install
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+# Run migrations
+php artisan migrate
 
-## Contributing
+# Seed database
+php artisan db:seed
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# Generate Swagger documentation
+php artisan l5-swagger:generate
 
-## Code of Conduct
+# Start development server
+php artisan serve
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### **Environment Configuration**
 
-## Security Vulnerabilities
+Required environment variables in `.env`:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```env
+APP_NAME=Flipzy
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost:8000
 
-## License
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=flipzy
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+
+# External APIs
+ATTOM_API_KEY=your_attom_key
+ATTOM_API_URL=https://api.gateway.attomdata.com/propertyapi/v1.0.0
+
+# OpenAI (for AI Rehab Estimation)
+OPENAI_API_KEY=your_openai_key
+OPENAI_MODEL=gpt-3.5-turbo
+
+# Broadcasting (Pusher/Soketi)
+BROADCAST_DRIVER=redis
+PUSHER_APP_ID=your_app_id
+PUSHER_APP_KEY=your_app_key
+PUSHER_APP_SECRET=your_app_secret
+PUSHER_APP_CLUSTER=mt1
+```
+
+---
+
+## 📚 Documentation
+
+### **API Documentation**
+- **Swagger UI:** `/api/documentation` - Interactive API documentation
+- **API Reference:** See `API_DOCUMENTATION.md`
+- **Frontend Guide:** See `FRONTEND_IMPLEMENTATION.md`
+- **System Overview:** See `SYSTEM_FUNCTIONALITY.md`
+
+---
+
+## 🎯 Features
+
+### ✅ **Implemented**
+- 🔐 OAuth2 Authentication (Laravel Passport)
+- 👥 Role-based Access Control (Spatie Permissions)
+- 🏠 Property CRUD Operations
+- 📸 Image Management
+- 🔍 Advanced Filtering & Search
+- 🌐 External API Integration (ATTOM, Geocoding)
+- 💬 Real-time Messaging
+- 📊 Analytics & Credibility Scoring
+- 🤖 AI Rehab Cost Estimation
+- 👨‍💼 Admin Dashboard
+- 📈 System Statistics
+- 🔄 Queue Management (Laravel Horizon)
+
+### ⏸️ **Deferred**
+- 💳 Subscription & Billing (Stripe integration)
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+php artisan test
+
+# Run specific test suite
+php artisan test --filter=PropertyTest
+php artisan test --filter=AdminTest
+php artisan test --filter=MessageTest
+
+# With coverage
+php artisan test --coverage
+```
+
+**Test Coverage:** 120+ tests covering:
+- Authentication
+- Property CRUD
+- Messaging
+- Analytics
+- Admin functionality
+- AI Rehab Estimation
+
+---
+
+## 🔧 Commands
+
+### **Property Enrichment**
+```bash
+# Enrich all properties
+php artisan properties:enrich-all
+
+# Enrich with fresh data
+php artisan properties:enrich-all --force-fresh
+
+# Run synchronously (no queue)
+php artisan properties:enrich-all --sync
+```
+
+### **Swagger Documentation**
+```bash
+# Generate/regenerate API docs
+php artisan l5-swagger:generate
+```
+
+### **Queue Management**
+```bash
+# Start queue worker
+php artisan queue:work
+
+# Start Horizon (queue dashboard)
+php artisan horizon
+```
+
+---
+
+## 📊 API Endpoints
+
+### **Authentication**
+- `POST /api/v1/register` - Register user
+- `POST /api/v1/login` - Login
+- `GET /api/v1/user` - Get current user
+- `POST /api/v1/logout` - Logout
+
+### **Properties**
+- `GET /api/v1/properties` - List properties (public)
+- `GET /api/v1/properties/{id}` - Get property (public)
+- `POST /api/v1/properties` - Create property (auth)
+- `PUT /api/v1/properties/{id}` - Update property (owner)
+- `DELETE /api/v1/properties/{id}` - Delete property (owner)
+- `POST /api/v1/properties/{id}/enrich` - Enrich property data
+
+### **Messaging**
+- `GET /api/v1/conversations` - List conversations
+- `POST /api/v1/conversations` - Create conversation
+- `GET /api/v1/conversations/{id}/messages` - Get messages
+- `POST /api/v1/conversations/{id}/messages` - Send message
+
+### **Analytics**
+- `POST /api/v1/properties/{id}/view` - Track view
+- `POST /api/v1/properties/{id}/save` - Track save
+- `GET /api/v1/properties/{id}/analytics` - Get analytics
+- `GET /api/v1/users/{id}/credibility` - Get credibility score
+
+### **AI Rehab Estimation**
+- `POST /api/v1/properties/{id}/estimate` - Generate estimate (Premium/VIP/Admin)
+- `GET /api/v1/properties/{id}/estimates` - Get estimate history
+
+### **Admin** (Admin only)
+- `GET /api/v1/admin/users` - Manage users
+- `GET /api/v1/admin/properties` - Manage properties
+- `GET /api/v1/admin/analytics/overview` - System overview
+- `GET /api/v1/admin/system/health` - System health
+
+**Full API documentation:** `/api/documentation`
+
+---
+
+## 🗄️ Database
+
+### **Migrations**
+```bash
+# Run migrations
+php artisan migrate
+
+# Rollback
+php artisan migrate:rollback
+
+# Fresh migration with seeding
+php artisan migrate:fresh --seed
+```
+
+### **Seeders**
+```bash
+# Seed all data
+php artisan db:seed
+
+# Seed specific seeder
+php artisan db:seed --class=UserSeeder
+```
+
+---
+
+## 🔐 Authentication
+
+All protected endpoints require a Bearer token:
+
+```http
+Authorization: Bearer {access_token}
+```
+
+**Token Expiration:**
+- Access Token: 15 days
+- Refresh Token: 30 days
+
+---
+
+## 📦 Project Structure
+
+```
+app/
+├── Http/
+│   ├── Controllers/
+│   │   ├── Admin/          # Admin controllers
+│   │   ├── AuthController.php
+│   │   ├── PropertyController.php
+│   │   └── ...
+│   ├── Middleware/
+│   ├── Requests/           # Form requests
+│   └── Resources/           # API resources
+├── Models/                  # Eloquent models
+├── Services/                # Business logic
+├── Jobs/                    # Queue jobs
+└── Events/                  # Event classes
+
+routes/
+├── api.php                  # API routes
+├── channels.php             # Broadcasting channels
+└── web.php                  # Web routes
+
+database/
+├── migrations/              # Database migrations
+├── seeders/                 # Database seeders
+└── factories/               # Model factories
+
+tests/
+├── Feature/                 # Feature tests
+└── Unit/                    # Unit tests
+```
+
+---
+
+## 🚀 Deployment
+
+### **Production Checklist**
+- [ ] Set `APP_ENV=production`
+- [ ] Set `APP_DEBUG=false`
+- [ ] Generate application key
+- [ ] Run migrations
+- [ ] Install Passport keys
+- [ ] Configure Redis
+- [ ] Set up queue workers
+- [ ] Configure Horizon
+- [ ] Set up SSL certificates
+- [ ] Configure CORS
+- [ ] Set up monitoring
+
+### **Queue Workers**
+```bash
+# Production queue worker
+php artisan queue:work --tries=3 --timeout=90
+
+# Or use Horizon
+php artisan horizon
+```
+
+---
+
+## 📝 License
+
+This project is proprietary software. All rights reserved.
+
+---
+
+## 🤝 Support
+
+For issues and questions:
+- Check API documentation: `/api/documentation`
+- Review `SYSTEM_FUNCTIONALITY.md`
+- Review `FRONTEND_IMPLEMENTATION.md`
+
+---
+
+**Built with ❤️ using Laravel 12**
