@@ -7,6 +7,7 @@ use App\Http\Resources\PropertyResource;
 use App\Models\Property;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use OpenApi\Attributes as OA;
 
 #[OA\Tag(name: "Admin - Property Management")]
@@ -76,7 +77,7 @@ class AdminPropertyController extends Controller
             new OA\Response(response: 403, description: "Forbidden - Admin access required"),
         ]
     )]
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
         $query = Property::with(['wholesaler', 'images']);
 
@@ -122,10 +123,8 @@ class AdminPropertyController extends Controller
         $perPage = min((int) $request->get('per_page', 15), 100);
         $properties = $query->paginate($perPage);
 
-        return response()->json([
-            'success' => true,
-            'data' => PropertyResource::collection($properties->items()),
-            'meta' => [
+        return PropertyResource::collection($properties)->additional([
+            'pagination' => [
                 'current_page' => $properties->currentPage(),
                 'last_page' => $properties->lastPage(),
                 'per_page' => $properties->perPage(),

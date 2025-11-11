@@ -305,6 +305,118 @@
                 ]
             }
         },
+        "/api/v1/admin/coupons": {
+            "get": {
+                "tags": [
+                    "Admin - Coupon Management"
+                ],
+                "summary": "List all coupons (Admin only)",
+                "description": "Get a paginated list of all coupons",
+                "operationId": "6f22fc7d646bb515d15712658a2f0ff1",
+                "responses": {
+                    "200": {
+                        "description": "Coupons retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Admin - Coupon Management"
+                ],
+                "summary": "Create new coupon (Admin only)",
+                "description": "Create new coupon",
+                "operationId": "589c1dfbc5dca6fae6cf027b9aad11e0",
+                "responses": {
+                    "200": {
+                        "description": "Coupon created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/admin/coupons/{id}": {
+            "get": {
+                "tags": [
+                    "Admin - Coupon Management"
+                ],
+                "summary": "Get coupon details (Admin only)",
+                "description": "Get coupon details",
+                "operationId": "3402d307719bb72e5730f484b48f4b95",
+                "responses": {
+                    "200": {
+                        "description": "Coupon retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Coupon not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Admin - Coupon Management"
+                ],
+                "summary": "Update coupon (Admin only)",
+                "description": "Update coupon",
+                "operationId": "31670db7ee9e9252cd8193edd86884c4",
+                "responses": {
+                    "200": {
+                        "description": "Coupon updated successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "404": {
+                        "description": "Coupon not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Admin - Coupon Management"
+                ],
+                "summary": "Delete coupon (Admin only)",
+                "description": "Delete/Deactivate coupon",
+                "operationId": "caa142aec6cced60f0d86d0f711d6079",
+                "responses": {
+                    "200": {
+                        "description": "Coupon deleted successfully"
+                    },
+                    "404": {
+                        "description": "Coupon not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/admin/properties": {
             "get": {
                 "tags": [
@@ -1432,6 +1544,72 @@
                     },
                     "403": {
                         "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/admin/waiting-list": {
+            "get": {
+                "tags": [
+                    "Admin - Waiting List Management"
+                ],
+                "summary": "List all waiting list entries (Admin only)",
+                "description": "Get a paginated list of all waiting list entries",
+                "operationId": "c410532d8a2d3229a9702d091c3ccac1",
+                "responses": {
+                    "200": {
+                        "description": "Entries retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/admin/waiting-list/{id}": {
+            "get": {
+                "tags": [
+                    "Admin - Waiting List Management"
+                ],
+                "summary": "Get waiting list entry details (Admin only)",
+                "description": "Get waiting list entry details",
+                "operationId": "35ce9cff8e62cf703771d932bcfc66ac",
+                "responses": {
+                    "200": {
+                        "description": "Entry retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Entry not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/admin/waiting-list/stats": {
+            "get": {
+                "tags": [
+                    "Admin - Waiting List Management"
+                ],
+                "summary": "Get waiting list statistics (Admin only)",
+                "description": "Get waiting list statistics",
+                "operationId": "69eba84bc3489dea01d4a8edfe6297cc",
+                "responses": {
+                    "200": {
+                        "description": "Statistics retrieved successfully"
                     }
                 },
                 "security": [
@@ -3514,6 +3692,218 @@
                     }
                 ]
             }
+        },
+        "/api/v1/waiting-list/plans": {
+            "get": {
+                "tags": [
+                    "Waiting List"
+                ],
+                "summary": "Get available subscription plans",
+                "description": "Get all active subscription plans available for waiting list registration",
+                "operationId": "361e9312285e88a6d5fb33add25020bd",
+                "responses": {
+                    "200": {
+                        "description": "Plans retrieved successfully"
+                    }
+                }
+            }
+        },
+        "/api/v1/waiting-list/validate-coupon": {
+            "post": {
+                "tags": [
+                    "Waiting List"
+                ],
+                "summary": "Validate coupon code",
+                "description": "Validate a coupon code and get discount information",
+                "operationId": "88abaeda37085dc9838f2e52e0b125c7",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "code",
+                                    "plan_id"
+                                ],
+                                "properties": {
+                                    "code": {
+                                        "description": "Coupon code",
+                                        "type": "string",
+                                        "example": "EARLYBIRD50"
+                                    },
+                                    "plan_id": {
+                                        "description": "Subscription plan UUID",
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
+                                    "email": {
+                                        "description": "User email (optional, for user limit checking)",
+                                        "type": "string",
+                                        "format": "email"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Coupon validated successfully"
+                    },
+                    "400": {
+                        "description": "Validation error or invalid coupon"
+                    }
+                }
+            }
+        },
+        "/api/v1/waiting-list/register": {
+            "post": {
+                "tags": [
+                    "Waiting List"
+                ],
+                "summary": "Register for waiting list",
+                "description": "Register email and subscription plan selection for waiting list",
+                "operationId": "0d77f598422baf419fc305e8a11ad42c",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "name",
+                                    "subscription_plan_id"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "description": "User email",
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "name": {
+                                        "description": "User name",
+                                        "type": "string"
+                                    },
+                                    "subscription_plan_id": {
+                                        "description": "Subscription plan UUID",
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
+                                    "coupon_code": {
+                                        "description": "Optional coupon code",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Registration successful"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/v1/waiting-list/checkout": {
+            "post": {
+                "tags": [
+                    "Waiting List"
+                ],
+                "summary": "Create checkout session",
+                "description": "Create Stripe checkout session for waiting list subscription purchase",
+                "operationId": "f2fc9719904bf03da65a222ac5af9ce6",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "subscription_plan_id"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "description": "User email",
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "subscription_plan_id": {
+                                        "description": "Subscription plan UUID",
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
+                                    "coupon_code": {
+                                        "description": "Optional coupon code",
+                                        "type": "string"
+                                    },
+                                    "success_url": {
+                                        "description": "Success redirect URL",
+                                        "type": "string",
+                                        "format": "url"
+                                    },
+                                    "cancel_url": {
+                                        "description": "Cancel redirect URL",
+                                        "type": "string",
+                                        "format": "url"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Checkout session created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/v1/waiting-list/status": {
+            "get": {
+                "tags": [
+                    "Waiting List"
+                ],
+                "summary": "Get waiting list status",
+                "description": "Get registration status by email and verification token",
+                "operationId": "652b5c0111a835e28255067dcbbe051d",
+                "parameters": [
+                    {
+                        "name": "email",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "email"
+                        }
+                    },
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Entry not found"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -3531,6 +3921,9 @@
             "name": "Admin - Analytics & Statistics"
         },
         {
+            "name": "Admin - Coupon Management"
+        },
+        {
             "name": "Admin - Property Management"
         },
         {
@@ -3544,6 +3937,9 @@
         },
         {
             "name": "Admin - User Management"
+        },
+        {
+            "name": "Admin - Waiting List Management"
         },
         {
             "name": "Analytics"
@@ -3568,6 +3964,9 @@
         },
         {
             "name": "Subscriptions"
+        },
+        {
+            "name": "Waiting List"
         }
     ]
 }

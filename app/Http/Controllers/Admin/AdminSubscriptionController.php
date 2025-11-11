@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\SubscriptionPlanResource;
+use App\Http\Resources\SubscriptionResource;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use OpenApi\Attributes as OA;
 
 #[OA\Tag(name: "Admin - Subscription Management")]
@@ -58,7 +61,7 @@ class AdminSubscriptionController extends Controller
             new OA\Response(response: 403, description: "Forbidden - Admin access required"),
         ]
     )]
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
         $query = Subscription::with(['user', 'plan']);
 
@@ -88,28 +91,8 @@ class AdminSubscriptionController extends Controller
         $perPage = min((int) $request->get('per_page', 15), 100);
         $subscriptions = $query->paginate($perPage);
 
-        return response()->json([
-            'success' => true,
-            'data' => $subscriptions->map(function ($subscription) {
-                return [
-                    'id' => $subscription->id,
-                    'user' => [
-                        'id' => $subscription->user->id,
-                        'name' => $subscription->user->name,
-                        'email' => $subscription->user->email,
-                    ],
-                    'plan' => [
-                        'id' => $subscription->plan->id,
-                        'name' => $subscription->plan->name,
-                        'slug' => $subscription->plan->slug,
-                    ],
-                    'status' => $subscription->status,
-                    'starts_at' => $subscription->starts_at?->toISOString(),
-                    'ends_at' => $subscription->ends_at?->toISOString(),
-                    'created_at' => $subscription->created_at->toISOString(),
-                ];
-            }),
-            'meta' => [
+        return SubscriptionResource::collection($subscriptions)->additional([
+            'pagination' => [
                 'current_page' => $subscriptions->currentPage(),
                 'last_page' => $subscriptions->lastPage(),
                 'per_page' => $subscriptions->perPage(),
@@ -142,32 +125,11 @@ class AdminSubscriptionController extends Controller
             new OA\Response(response: 403, description: "Forbidden - Admin access required"),
         ]
     )]
-    public function show(Subscription $subscription): JsonResponse
+    public function show(Request $request, Subscription $subscription): SubscriptionResource
     {
         $subscription->load(['user', 'plan']);
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'id' => $subscription->id,
-                'user' => [
-                    'id' => $subscription->user->id,
-                    'name' => $subscription->user->name,
-                    'email' => $subscription->user->email,
-                ],
-                'plan' => [
-                    'id' => $subscription->plan->id,
-                    'name' => $subscription->plan->name,
-                    'slug' => $subscription->plan->slug,
-                    'price' => $subscription->plan->price,
-                ],
-                'status' => $subscription->status,
-                'starts_at' => $subscription->starts_at?->toISOString(),
-                'ends_at' => $subscription->ends_at?->toISOString(),
-                'cancelled_at' => $subscription->cancelled_at?->toISOString(),
-                'created_at' => $subscription->created_at->toISOString(),
-            ],
-        ]);
+        return new SubscriptionResource($subscription);
     }
 
     /**
@@ -184,30 +146,11 @@ class AdminSubscriptionController extends Controller
             new OA\Response(response: 403, description: "Forbidden - Admin access required"),
         ]
     )]
-    public function plans(): JsonResponse
+    public function plans(): AnonymousResourceCollection
     {
         $plans = SubscriptionPlan::all();
 
-        return response()->json([
-            'success' => true,
-            'data' => $plans->map(function ($plan) {
-                return [
-                    'id' => $plan->id,
-                    'name' => $plan->name,
-                    'slug' => $plan->slug,
-                    'description' => $plan->description,
-                    'price' => $plan->price,
-                    'billing_interval' => $plan->billing_interval,
-                    'features' => $plan->features,
-                    'max_properties' => $plan->max_properties,
-                    'max_messages' => $plan->max_messages,
-                    'has_ai_estimates' => $plan->has_ai_estimates,
-                    'has_api_access' => $plan->has_api_access,
-                    'is_active' => $plan->is_active,
-                    'subscription_count' => $plan->subscriptions()->where('status', 'active')->count(),
-                ];
-            }),
-        ]);
+        return SubscriptionPlanResource::collection($plans);
     }
 
     /**

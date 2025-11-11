@@ -7,9 +7,10 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Hash;
 use OpenApi\Attributes as OA;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 
 #[OA\Tag(name: "Admin - User Management")]
 class AdminUserController extends Controller
@@ -60,7 +61,7 @@ class AdminUserController extends Controller
             new OA\Response(response: 403, description: "Forbidden - Admin access required"),
         ]
     )]
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
         $query = User::query();
 
@@ -93,10 +94,8 @@ class AdminUserController extends Controller
         $perPage = min((int) $request->get('per_page', 15), 100);
         $users = $query->with('roles')->paginate($perPage);
 
-        return response()->json([
-            'success' => true,
-            'data' => UserResource::collection($users->items()),
-            'meta' => [
+        return UserResource::collection($users)->additional([
+            'pagination' => [
                 'current_page' => $users->currentPage(),
                 'last_page' => $users->lastPage(),
                 'per_page' => $users->perPage(),

@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\WaitingListEntry;
 use App\Services\StripeService;
+use App\Services\WaitingListService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -15,10 +17,12 @@ use Stripe\Exception\SignatureVerificationException;
 class StripeWebhookController extends Controller
 {
     protected StripeService $stripeService;
+    protected WaitingListService $waitingListService;
 
-    public function __construct(StripeService $stripeService)
+    public function __construct(StripeService $stripeService, WaitingListService $waitingListService)
     {
         $this->stripeService = $stripeService;
+        $this->waitingListService = $waitingListService;
     }
 
     /**
@@ -100,6 +104,10 @@ class StripeWebhookController extends Controller
 
                 case 'customer.subscription.deleted':
                     $this->handleSubscriptionDeleted($event->data->object);
+                    break;
+
+                case 'checkout.session.completed':
+                    $this->handleCheckoutSessionCompleted($event->data->object);
                     break;
 
                 default:
@@ -276,6 +284,42 @@ class StripeWebhookController extends Controller
             Log::info('Subscription cancelled via webhook', [
                 'subscription_id' => $dbSubscription->id,
                 'stripe_subscription_id' => $subscription->id,
+            ]);
+        }
+    }
+
+    /**
+     * Handle checkout session completed (for waiting list)
+     */
+    protected function handleCheckoutSessionCompleted($session): void
+    {
+        // Check if this is a waiting list checkout
+        if (isset($session->metadata->type) && $session->metadata->type === 'waiting_list') {
+            $checkoutSessionId = $session->id;
+            
+            Log::info('Waiting list checkout session completed', [
+                'checkout_session_id' => $checkoutSessionId,
+                'waiting_list_entry_id' => $session->metadata->waiting_list_entry_id ?? null,
+            ]);
+
+            // Handle waiting list payment success
+            $result = $this->waitingListService->handlePaymentSuccess($checkoutSessionId);
+
+            if ($result['success']) {
+                Log::info('Waiting list payment processed successfully', [
+                    'entry_id' => $result['entry']->id,
+                    'transaction_id' => $result['transaction']->id ?? null,
+                ]);
+            } else {
+                Log::error('Failed to process waiting list payment', [
+                    'checkout_session_id' => $checkoutSessionId,
+                    'error' => $result['error'] ?? 'Unknown error',
+                ]);
+            }
+        } else {
+            // Regular checkout session - handle normally if needed
+            Log::info('Regular checkout session completed', [
+                'checkout_session_id' => $session->id,
             ]);
         }
     }

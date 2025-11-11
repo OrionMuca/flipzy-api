@@ -8,7 +8,7 @@ use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\Client;
 use Mockery;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use Tests\TestCase;
 
 class RefundTest extends TestCase

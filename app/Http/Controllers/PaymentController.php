@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use App\Models\SubscriptionPlan;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -203,14 +205,11 @@ class PaymentController extends Controller
                 'stripe_response' => $result,
             ]);
 
+            $transaction->load('subscription');
+
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'transaction_id' => $transaction->id,
-                    'status' => 'completed',
-                    'amount' => $transaction->amount,
-                    'currency' => $transaction->currency,
-                ],
+                'data' => new TransactionResource($transaction),
             ]);
         } catch (\Exception $e) {
             Log::error('Payment confirmation failed', [
@@ -246,7 +245,7 @@ class PaymentController extends Controller
             new OA\Response(response: 200, description: "Transactions retrieved successfully"),
         ]
     )]
-    public function transactions(Request $request): JsonResponse
+    public function transactions(Request $request): AnonymousResourceCollection
     {
         $user = $request->user();
 
@@ -262,11 +261,9 @@ class PaymentController extends Controller
         }
 
         $perPage = min((int) $request->input('per_page', 15), 100);
-        $transactions = $query->paginate($perPage);
+        $transactions = $query->with('subscription.plan')->paginate($perPage);
 
-        return response()->json([
-            'success' => true,
-            'data' => $transactions->items(),
+        return TransactionResource::collection($transactions)->additional([
             'pagination' => [
                 'current_page' => $transactions->currentPage(),
                 'per_page' => $transactions->perPage(),
@@ -309,9 +306,6 @@ class PaymentController extends Controller
             ], 404);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $transaction,
-        ]);
+        return new TransactionResource($transaction);
     }
 }

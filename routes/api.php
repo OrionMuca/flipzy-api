@@ -19,9 +19,23 @@ Route::prefix('v1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     
+    // Password reset routes (public)
+    Route::post('/password/forgot', [AuthController::class, 'forgotPassword']);
+    Route::post('/password/reset', [AuthController::class, 'resetPassword']);
+    
+    // Email verification routes (public)
+    Route::get('/email/verify', [AuthController::class, 'verifyEmail']);
+    
     // Public property viewing
     Route::get('/properties', [\App\Http\Controllers\PropertyController::class, 'index']);
     Route::get('/properties/{property}', [\App\Http\Controllers\PropertyController::class, 'show']);
+    
+    // Waiting list routes (public)
+    Route::get('/waiting-list/plans', [\App\Http\Controllers\WaitingListController::class, 'plans']);
+    Route::post('/waiting-list/validate-coupon', [\App\Http\Controllers\WaitingListController::class, 'validateCoupon']);
+    Route::post('/waiting-list/register', [\App\Http\Controllers\WaitingListController::class, 'register']);
+    Route::post('/waiting-list/checkout', [\App\Http\Controllers\WaitingListController::class, 'checkout']);
+    Route::get('/waiting-list/status', [\App\Http\Controllers\WaitingListController::class, 'status']);
 });
 
 // Protected routes
@@ -130,6 +144,18 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         Route::get('/system/stats', [\App\Http\Controllers\Admin\AdminSystemController::class, 'stats']);
         Route::get('/system/logs', [\App\Http\Controllers\Admin\AdminSystemController::class, 'logs']);
         Route::get('/system/queue', [\App\Http\Controllers\Admin\AdminSystemController::class, 'queue']);
+        
+        // Waiting list management
+        Route::get('/waiting-list', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'index']);
+        Route::get('/waiting-list/stats', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'stats']);
+        Route::get('/waiting-list/{id}', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'show']);
+        
+        // Coupon management
+        Route::get('/coupons', [\App\Http\Controllers\Admin\AdminCouponController::class, 'index']);
+        Route::post('/coupons', [\App\Http\Controllers\Admin\AdminCouponController::class, 'store']);
+        Route::get('/coupons/{id}', [\App\Http\Controllers\Admin\AdminCouponController::class, 'show']);
+        Route::put('/coupons/{id}', [\App\Http\Controllers\Admin\AdminCouponController::class, 'update']);
+        Route::delete('/coupons/{id}', [\App\Http\Controllers\Admin\AdminCouponController::class, 'destroy']);
     });
 });
 

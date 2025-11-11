@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
@@ -39,7 +41,7 @@ class AdminTransactionController extends Controller
             new OA\Response(response: 403, description: "Forbidden - Admin only"),
         ]
     )]
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
         $query = Transaction::with(['user:id,name,email', 'subscription.plan']);
 
@@ -72,9 +74,7 @@ class AdminTransactionController extends Controller
         $perPage = min((int) $request->input('per_page', 15), 100);
         $transactions = $query->paginate($perPage);
 
-        return response()->json([
-            'success' => true,
-            'data' => $transactions->items(),
+        return TransactionResource::collection($transactions)->additional([
             'pagination' => [
                 'current_page' => $transactions->currentPage(),
                 'per_page' => $transactions->perPage(),

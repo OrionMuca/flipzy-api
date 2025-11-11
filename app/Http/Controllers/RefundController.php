@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
@@ -169,16 +170,11 @@ class RefundController extends Controller
 
                 DB::commit();
 
+                $refundTransaction->load('subscription');
+
                 return response()->json([
                     'success' => true,
-                    'data' => [
-                        'refund_transaction_id' => $refundTransaction->id,
-                        'original_transaction_id' => $transaction->id,
-                        'refund_amount' => $result['amount'],
-                        'currency' => $transaction->currency,
-                        'status' => $result['status'],
-                        'is_full_refund' => $isFullRefund,
-                    ],
+                    'data' => new TransactionResource($refundTransaction),
                 ]);
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -232,9 +228,8 @@ class RefundController extends Controller
             ], 404);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $refund,
-        ]);
+        $refund->load('subscription');
+
+        return new TransactionResource($refund);
     }
 }

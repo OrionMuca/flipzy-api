@@ -8,6 +8,7 @@ use App\Models\PropertyRehabEstimate;
 use App\Services\RehabEstimateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\RateLimiter;
 use OpenApi\Attributes as OA;
 
@@ -165,15 +166,12 @@ class RehabEstimateController extends Controller
             new OA\Response(response: 401, description: "Unauthenticated"),
         ]
     )]
-    public function getEstimateHistory(Request $request, Property $property): JsonResponse
+    public function getEstimateHistory(Request $request, Property $property): AnonymousResourceCollection
     {
         $limit = (int) $request->get('limit', 10);
         $estimates = $this->rehabEstimateService->getEstimateHistory($property, $limit);
 
-        return response()->json([
-            'success' => true,
-            'data' => RehabEstimateResource::collection($estimates),
-        ]);
+        return RehabEstimateResource::collection($estimates);
     }
 
     /**

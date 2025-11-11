@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\SubscriptionPlanResource;
+use App\Http\Resources\SubscriptionResource;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -35,29 +38,11 @@ class SubscriptionController extends Controller
             new OA\Response(response: 200, description: "Plans retrieved successfully"),
         ]
     )]
-    public function plans(): JsonResponse
+    public function plans(): AnonymousResourceCollection
     {
         $plans = SubscriptionPlan::active()->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $plans->map(function ($plan) {
-                return [
-                    'id' => $plan->id,
-                    'name' => $plan->name,
-                    'slug' => $plan->slug,
-                    'description' => $plan->description,
-                    'price' => $plan->price,
-                    'billing_interval' => $plan->billing_interval,
-                    'features' => $plan->features,
-                    'max_properties' => $plan->max_properties,
-                    'max_messages' => $plan->max_messages,
-                    'has_ai_estimates' => $plan->has_ai_estimates,
-                    'has_api_access' => $plan->has_api_access,
-                    'stripe_price_id' => $plan->stripe_price_id,
-                ];
-            }),
-        ]);
+        return SubscriptionPlanResource::collection($plans);
     }
 
     /**
@@ -338,10 +323,10 @@ class SubscriptionController extends Controller
             new OA\Response(response: 404, description: "No active subscription found"),
         ]
     )]
-    public function current(Request $request): JsonResponse
+    public function current(Request $request): JsonResponse|SubscriptionResource
     {
         $user = $request->user();
-        $subscription = $user->subscription;
+        $subscription = $user->subscription()->with('plan')->first();
 
         if (!$subscription) {
             return response()->json([
@@ -350,22 +335,7 @@ class SubscriptionController extends Controller
             ], 404);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'id' => $subscription->id,
-                'plan' => [
-                    'id' => $subscription->plan->id,
-                    'name' => $subscription->plan->name,
-                    'slug' => $subscription->plan->slug,
-                    'price' => $subscription->plan->price,
-                ],
-                'status' => $subscription->status,
-                'starts_at' => $subscription->starts_at->toISOString(),
-                'ends_at' => $subscription->ends_at?->toISOString(),
-                'cancelled_at' => $subscription->cancelled_at?->toISOString(),
-            ],
-        ]);
+        return new SubscriptionResource($subscription);
     }
 
     /**
@@ -472,28 +442,11 @@ class SubscriptionController extends Controller
             new OA\Response(response: 200, description: "Subscription history retrieved successfully"),
         ]
     )]
-    public function history(Request $request): JsonResponse
+    public function history(Request $request): AnonymousResourceCollection
     {
         $user = $request->user();
         $subscriptions = $user->subscriptions()->with('plan')->orderBy('created_at', 'desc')->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $subscriptions->map(function ($subscription) {
-                return [
-                    'id' => $subscription->id,
-                    'plan' => [
-                        'id' => $subscription->plan->id,
-                        'name' => $subscription->plan->name,
-                        'slug' => $subscription->plan->slug,
-                    ],
-                    'status' => $subscription->status,
-                    'starts_at' => $subscription->starts_at->toISOString(),
-                    'ends_at' => $subscription->ends_at?->toISOString(),
-                    'cancelled_at' => $subscription->cancelled_at?->toISOString(),
-                    'created_at' => $subscription->created_at->toISOString(),
-                ];
-            }),
-        ]);
+        return SubscriptionResource::collection($subscriptions);
     }
 }

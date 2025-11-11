@@ -9,7 +9,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Laravel\Passport\Client;
 use Mockery;
-use Spatie\Permission\Models\Role;
+use Mockery\MockInterface;
+use App\Models\Role;
 use Tests\TestCase;
 
 class PaymentTest extends TestCase
@@ -17,7 +18,11 @@ class PaymentTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
-    protected StripeService $stripeService;
+    /**
+     * @var MockInterface|StripeService
+     * @phpstan-var MockInterface
+     */
+    protected $stripeService;
 
     protected function setUp(): void
     {
@@ -56,7 +61,9 @@ class PaymentTest extends TestCase
     /** @test */
     public function user_can_create_payment_intent(): void
     {
-        $this->stripeService
+        /** @var MockInterface $stripeService */
+        $stripeService = $this->stripeService;
+        $stripeService
             ->shouldReceive('createPaymentIntent')
             ->once()
             ->with(
@@ -165,7 +172,9 @@ class PaymentTest extends TestCase
             'stripe_payment_intent_id' => 'pi_test123',
         ]);
 
-        $this->stripeService
+        /** @var MockInterface $stripeService */
+        $stripeService = $this->stripeService;
+        $stripeService
             ->shouldReceive('confirmPaymentIntent')
             ->once()
             ->with('pi_test123')
@@ -210,7 +219,9 @@ class PaymentTest extends TestCase
             'stripe_payment_intent_id' => 'pi_invalid',
         ]);
 
-        $this->stripeService
+        /** @var MockInterface $stripeService */
+        $stripeService = $this->stripeService;
+        $stripeService
             ->shouldReceive('confirmPaymentIntent')
             ->once()
             ->with('pi_invalid')
@@ -363,7 +374,9 @@ class PaymentTest extends TestCase
     /** @test */
     public function payment_intent_creation_fails_when_stripe_fails(): void
     {
-        $this->stripeService
+        /** @var MockInterface $stripeService */
+        $stripeService = $this->stripeService;
+        $stripeService
             ->shouldReceive('createPaymentIntent')
             ->once()
             ->andReturn([
