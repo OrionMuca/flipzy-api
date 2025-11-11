@@ -37,6 +37,9 @@ php artisan key:generate
 # Install Passport
 php artisan passport:install
 
+# Ensure personal access client exists (for API token generation)
+php artisan passport:ensure-client
+
 # Run migrations
 php artisan migrate
 

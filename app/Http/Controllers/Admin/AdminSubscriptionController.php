@@ -7,12 +7,57 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use OpenApi\Attributes as OA;
 
+#[OA\Tag(name: "Admin - Subscription Management")]
 class AdminSubscriptionController extends Controller
 {
     /**
      * List all subscriptions
      */
+    #[OA\Get(
+        path: "/admin/subscriptions",
+        summary: "List all subscriptions (Admin only)",
+        description: "Get a paginated list of all subscriptions with optional filtering by plan and status",
+        tags: ["Admin - Subscription Management"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(
+                name: "plan",
+                in: "query",
+                description: "Filter by plan slug (free, premium, vip)",
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "status",
+                in: "query",
+                description: "Filter by status",
+                schema: new OA\Schema(type: "string", enum: ["active", "cancelled", "expired"])
+            ),
+            new OA\Parameter(
+                name: "sort_by",
+                in: "query",
+                description: "Sort field",
+                schema: new OA\Schema(type: "string", default: "created_at")
+            ),
+            new OA\Parameter(
+                name: "sort_order",
+                in: "query",
+                description: "Sort order",
+                schema: new OA\Schema(type: "string", enum: ["asc", "desc"], default: "desc")
+            ),
+            new OA\Parameter(
+                name: "per_page",
+                in: "query",
+                description: "Items per page (max 100)",
+                schema: new OA\Schema(type: "integer", default: 15, maximum: 100)
+            ),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Subscriptions retrieved successfully"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
     public function index(Request $request): JsonResponse
     {
         $query = Subscription::with(['user', 'plan']);
@@ -76,6 +121,27 @@ class AdminSubscriptionController extends Controller
     /**
      * Get subscription details
      */
+    #[OA\Get(
+        path: "/admin/subscriptions/{id}",
+        summary: "Get subscription details (Admin only)",
+        description: "Get detailed information about a specific subscription",
+        tags: ["Admin - Subscription Management"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                description: "Subscription ID",
+                schema: new OA\Schema(type: "integer")
+            ),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Subscription details retrieved successfully"),
+            new OA\Response(response: 404, description: "Subscription not found"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
     public function show(Subscription $subscription): JsonResponse
     {
         $subscription->load(['user', 'plan']);
@@ -107,6 +173,17 @@ class AdminSubscriptionController extends Controller
     /**
      * List subscription plans
      */
+    #[OA\Get(
+        path: "/admin/subscriptions/plans",
+        summary: "List subscription plans (Admin only)",
+        description: "Get all available subscription plans with their details and active subscription counts",
+        tags: ["Admin - Subscription Management"],
+        security: [["bearerAuth" => []]],
+        responses: [
+            new OA\Response(response: 200, description: "Subscription plans retrieved successfully"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
     public function plans(): JsonResponse
     {
         $plans = SubscriptionPlan::all();
@@ -136,6 +213,17 @@ class AdminSubscriptionController extends Controller
     /**
      * Get subscription statistics
      */
+    #[OA\Get(
+        path: "/admin/subscriptions/stats",
+        summary: "Get subscription statistics (Admin only)",
+        description: "Get subscription statistics including total, active, cancelled counts and breakdown by plan",
+        tags: ["Admin - Subscription Management"],
+        security: [["bearerAuth" => []]],
+        responses: [
+            new OA\Response(response: 200, description: "Subscription statistics retrieved successfully"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
     public function stats(): JsonResponse
     {
         $totalSubscriptions = Subscription::count();

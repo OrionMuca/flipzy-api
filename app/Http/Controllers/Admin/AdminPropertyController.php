@@ -7,12 +7,75 @@ use App\Http\Resources\PropertyResource;
 use App\Models\Property;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use OpenApi\Attributes as OA;
 
+#[OA\Tag(name: "Admin - Property Management")]
 class AdminPropertyController extends Controller
 {
     /**
      * List all properties
      */
+    #[OA\Get(
+        path: "/admin/properties",
+        summary: "List all properties (Admin only)",
+        description: "Get a paginated list of all properties with optional filtering by status, wholesaler, city, state, and search",
+        tags: ["Admin - Property Management"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(
+                name: "status",
+                in: "query",
+                description: "Filter by status",
+                schema: new OA\Schema(type: "string", enum: ["active", "pending", "sold"])
+            ),
+            new OA\Parameter(
+                name: "wholesaler_id",
+                in: "query",
+                description: "Filter by wholesaler UUID",
+                schema: new OA\Schema(type: "string", format: "uuid")
+            ),
+            new OA\Parameter(
+                name: "city",
+                in: "query",
+                description: "Filter by city",
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "state",
+                in: "query",
+                description: "Filter by state",
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "search",
+                in: "query",
+                description: "Search in title, address, or description",
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "sort_by",
+                in: "query",
+                description: "Sort field",
+                schema: new OA\Schema(type: "string", default: "created_at")
+            ),
+            new OA\Parameter(
+                name: "sort_order",
+                in: "query",
+                description: "Sort order",
+                schema: new OA\Schema(type: "string", enum: ["asc", "desc"], default: "desc")
+            ),
+            new OA\Parameter(
+                name: "per_page",
+                in: "query",
+                description: "Items per page (max 100)",
+                schema: new OA\Schema(type: "integer", default: 15, maximum: 100)
+            ),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Properties retrieved successfully"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
     public function index(Request $request): JsonResponse
     {
         $query = Property::with(['wholesaler', 'images']);
@@ -74,6 +137,27 @@ class AdminPropertyController extends Controller
     /**
      * Get property details
      */
+    #[OA\Get(
+        path: "/admin/properties/{id}",
+        summary: "Get property details (Admin only)",
+        description: "Get detailed information about a specific property including wholesaler, images, analytics, and rehab estimates",
+        tags: ["Admin - Property Management"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                description: "Property UUID",
+                schema: new OA\Schema(type: "string", format: "uuid")
+            ),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Property details retrieved successfully"),
+            new OA\Response(response: 404, description: "Property not found"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
     public function show(Property $property): JsonResponse
     {
         $property->load(['wholesaler', 'images', 'analytics', 'rehabEstimates']);
@@ -87,6 +171,40 @@ class AdminPropertyController extends Controller
     /**
      * Update property
      */
+    #[OA\Put(
+        path: "/admin/properties/{id}",
+        summary: "Update property (Admin only)",
+        description: "Update property information including title, description, status, featured status, and verification",
+        tags: ["Admin - Property Management"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                description: "Property UUID",
+                schema: new OA\Schema(type: "string", format: "uuid")
+            ),
+        ],
+        requestBody: new OA\RequestBody(
+            required: false,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: "title", type: "string", maxLength: 255),
+                    new OA\Property(property: "description", type: "string"),
+                    new OA\Property(property: "status", type: "string", enum: ["active", "pending", "sold"]),
+                    new OA\Property(property: "is_featured", type: "boolean"),
+                    new OA\Property(property: "is_verified", type: "boolean"),
+                    new OA\Property(property: "allow_inquiries", type: "boolean"),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: "Property updated successfully"),
+            new OA\Response(response: 422, description: "Validation error"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
     public function update(Request $request, Property $property): JsonResponse
     {
         $validated = $request->validate([
@@ -112,6 +230,26 @@ class AdminPropertyController extends Controller
     /**
      * Delete property
      */
+    #[OA\Delete(
+        path: "/admin/properties/{id}",
+        summary: "Delete property (Admin only)",
+        description: "Permanently delete a property",
+        tags: ["Admin - Property Management"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                description: "Property UUID",
+                schema: new OA\Schema(type: "string", format: "uuid")
+            ),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Property deleted successfully"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
     public function destroy(Property $property): JsonResponse
     {
         $property->delete();
@@ -125,6 +263,26 @@ class AdminPropertyController extends Controller
     /**
      * Approve property
      */
+    #[OA\Post(
+        path: "/admin/properties/{id}/approve",
+        summary: "Approve property (Admin only)",
+        description: "Approve a property by setting status to active and marking as verified",
+        tags: ["Admin - Property Management"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                description: "Property UUID",
+                schema: new OA\Schema(type: "string", format: "uuid")
+            ),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Property approved successfully"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
     public function approve(Property $property): JsonResponse
     {
         $property->update([
@@ -142,6 +300,36 @@ class AdminPropertyController extends Controller
     /**
      * Feature/unfeature property
      */
+    #[OA\Post(
+        path: "/admin/properties/{id}/feature",
+        summary: "Feature or unfeature property (Admin only)",
+        description: "Mark a property as featured or remove featured status",
+        tags: ["Admin - Property Management"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                description: "Property UUID",
+                schema: new OA\Schema(type: "string", format: "uuid")
+            ),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["featured"],
+                properties: [
+                    new OA\Property(property: "featured", type: "boolean", description: "Set to true to feature, false to unfeature"),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: "Property featured status updated successfully"),
+            new OA\Response(response: 422, description: "Validation error"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
     public function feature(Request $request, Property $property): JsonResponse
     {
         $request->validate([
@@ -162,6 +350,26 @@ class AdminPropertyController extends Controller
     /**
      * Verify property
      */
+    #[OA\Post(
+        path: "/admin/properties/{id}/verify",
+        summary: "Verify property (Admin only)",
+        description: "Mark a property as verified",
+        tags: ["Admin - Property Management"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                description: "Property UUID",
+                schema: new OA\Schema(type: "string", format: "uuid")
+            ),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Property verified successfully"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
     public function verify(Property $property): JsonResponse
     {
         $property->update([

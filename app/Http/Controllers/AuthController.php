@@ -214,7 +214,7 @@ class AuthController extends Controller
         $user = $request->user();
         
         // Revoke all tokens for the user
-        // This is the standard approach for personal access tokens
+        // Passport checks the 'revoked' column in oauth_access_tokens table
         $user->tokens()->update(['revoked' => true]);
 
         return response()->json([

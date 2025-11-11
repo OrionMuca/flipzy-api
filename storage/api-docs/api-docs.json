@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Flipzy API",
-        "description": "Flipzy Property Management Platform API - Complete API documentation for property listings, messaging, analytics, and admin features.",
+        "description": "Flipzy Property Management Platform API - Complete API documentation for property listings, messaging, analytics, and admin features.\n\n## Authentication\n\nThis API uses Laravel Passport for authentication. To authenticate:\n\n1. Use the `/register` or `/login` endpoint to get an access token\n2. Copy the `access_token` from the response\n3. Click the 'Authorize' button at the top of this page\n4. Enter: `Bearer YOUR_ACCESS_TOKEN` (replace YOUR_ACCESS_TOKEN with your actual token)\n5. Click 'Authorize' and then 'Close'\n\nAll protected endpoints will now use this token automatically.",
         "version": "1.0.0"
     },
     "servers": [
@@ -12,6 +12,1224 @@
         }
     ],
     "paths": {
+        "/admin/analytics/overview": {
+            "get": {
+                "tags": [
+                    "Admin - Analytics & Statistics"
+                ],
+                "summary": "Get system overview statistics (Admin only)",
+                "description": "Get comprehensive system-wide statistics including user counts, property counts, and engagement metrics",
+                "operationId": "ec0868618d7b3d2b9013820053850a0c",
+                "responses": {
+                    "200": {
+                        "description": "Overview statistics retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/analytics/users": {
+            "get": {
+                "tags": [
+                    "Admin - Analytics & Statistics"
+                ],
+                "summary": "Get user statistics (Admin only)",
+                "description": "Get user statistics for a specific time period",
+                "operationId": "2c4cc045ec62f3ad78ed5833718d388e",
+                "parameters": [
+                    {
+                        "name": "days",
+                        "in": "query",
+                        "description": "Time period in days",
+                        "schema": {
+                            "type": "integer",
+                            "default": 30,
+                            "enum": [
+                                7,
+                                30,
+                                90,
+                                365
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User statistics retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/analytics/properties": {
+            "get": {
+                "tags": [
+                    "Admin - Analytics & Statistics"
+                ],
+                "summary": "Get property statistics (Admin only)",
+                "description": "Get property statistics for a specific time period",
+                "operationId": "912edb5f1a2a9411df01dc1007c3af65",
+                "parameters": [
+                    {
+                        "name": "days",
+                        "in": "query",
+                        "description": "Time period in days",
+                        "schema": {
+                            "type": "integer",
+                            "default": 30,
+                            "enum": [
+                                7,
+                                30,
+                                90,
+                                365
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Property statistics retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/analytics/engagement": {
+            "get": {
+                "tags": [
+                    "Admin - Analytics & Statistics"
+                ],
+                "summary": "Get engagement statistics (Admin only)",
+                "description": "Get user engagement statistics including views, saves, and inquiries for a specific time period",
+                "operationId": "478944aad3f018a6b9dd606954c4aae2",
+                "parameters": [
+                    {
+                        "name": "days",
+                        "in": "query",
+                        "description": "Time period in days",
+                        "schema": {
+                            "type": "integer",
+                            "default": 30,
+                            "enum": [
+                                7,
+                                30,
+                                90,
+                                365
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Engagement statistics retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/analytics/trends": {
+            "get": {
+                "tags": [
+                    "Admin - Analytics & Statistics"
+                ],
+                "summary": "Get trends over time (Admin only)",
+                "description": "Get trends data showing changes over time for users, properties, and engagement",
+                "operationId": "90cf56918c0844301dbda2d0514411ad",
+                "parameters": [
+                    {
+                        "name": "days",
+                        "in": "query",
+                        "description": "Time period in days",
+                        "schema": {
+                            "type": "integer",
+                            "default": 30,
+                            "enum": [
+                                7,
+                                30,
+                                90,
+                                365
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Trends data retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/analytics/top-properties": {
+            "get": {
+                "tags": [
+                    "Admin - Analytics & Statistics"
+                ],
+                "summary": "Get top properties by engagement (Admin only)",
+                "description": "Get the top performing properties ranked by engagement metrics",
+                "operationId": "25b33089f402111fc34238b701466a35",
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Number of properties to return (1-50)",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "maximum": 50,
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "days",
+                        "in": "query",
+                        "description": "Time period in days",
+                        "schema": {
+                            "type": "integer",
+                            "default": 30,
+                            "enum": [
+                                7,
+                                30,
+                                90,
+                                365
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Top properties retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/analytics/top-wholesalers": {
+            "get": {
+                "tags": [
+                    "Admin - Analytics & Statistics"
+                ],
+                "summary": "Get top wholesalers by credibility (Admin only)",
+                "description": "Get the top performing wholesalers ranked by credibility score",
+                "operationId": "b75725d9dd50aa1cc5278c1ec43d8b10",
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Number of wholesalers to return (1-50)",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10,
+                            "maximum": 50,
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Top wholesalers retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/analytics/geographic": {
+            "get": {
+                "tags": [
+                    "Admin - Analytics & Statistics"
+                ],
+                "summary": "Get geographic distribution (Admin only)",
+                "description": "Get property distribution by geographic location (state/city)",
+                "operationId": "66a7b7ee36e654730eb9d9f7220ef459",
+                "responses": {
+                    "200": {
+                        "description": "Geographic distribution retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/properties": {
+            "get": {
+                "tags": [
+                    "Admin - Property Management"
+                ],
+                "summary": "List all properties (Admin only)",
+                "description": "Get a paginated list of all properties with optional filtering by status, wholesaler, city, state, and search",
+                "operationId": "72adb34ecc1940be5ca09a53cfaa4894",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter by status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "active",
+                                "pending",
+                                "sold"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "wholesaler_id",
+                        "in": "query",
+                        "description": "Filter by wholesaler UUID",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "city",
+                        "in": "query",
+                        "description": "Filter by city",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "description": "Filter by state",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Search in title, address, or description",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "description": "Sort field",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "sort_order",
+                        "in": "query",
+                        "description": "Sort order",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Items per page (max 100)",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Properties retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/properties/{id}": {
+            "get": {
+                "tags": [
+                    "Admin - Property Management"
+                ],
+                "summary": "Get property details (Admin only)",
+                "description": "Get detailed information about a specific property including wholesaler, images, analytics, and rehab estimates",
+                "operationId": "979513e420e7c4637e0f4dcd29522f4e",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Property UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Property details retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Property not found"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Admin - Property Management"
+                ],
+                "summary": "Update property (Admin only)",
+                "description": "Update property information including title, description, status, featured status, and verification",
+                "operationId": "1844d75f8e6fd59a183f731bb3a89cbd",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Property UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "pending",
+                                            "sold"
+                                        ]
+                                    },
+                                    "is_featured": {
+                                        "type": "boolean"
+                                    },
+                                    "is_verified": {
+                                        "type": "boolean"
+                                    },
+                                    "allow_inquiries": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Property updated successfully"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Admin - Property Management"
+                ],
+                "summary": "Delete property (Admin only)",
+                "description": "Permanently delete a property",
+                "operationId": "8711234733a4062a82e5a0efb6bc66e2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Property UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Property deleted successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/properties/{id}/approve": {
+            "post": {
+                "tags": [
+                    "Admin - Property Management"
+                ],
+                "summary": "Approve property (Admin only)",
+                "description": "Approve a property by setting status to active and marking as verified",
+                "operationId": "8f105700335c20607184056e7c9bf761",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Property UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Property approved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/properties/{id}/feature": {
+            "post": {
+                "tags": [
+                    "Admin - Property Management"
+                ],
+                "summary": "Feature or unfeature property (Admin only)",
+                "description": "Mark a property as featured or remove featured status",
+                "operationId": "ad32c8965fee5d9893d000399628f932",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Property UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "featured"
+                                ],
+                                "properties": {
+                                    "featured": {
+                                        "description": "Set to true to feature, false to unfeature",
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Property featured status updated successfully"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/properties/{id}/verify": {
+            "post": {
+                "tags": [
+                    "Admin - Property Management"
+                ],
+                "summary": "Verify property (Admin only)",
+                "description": "Mark a property as verified",
+                "operationId": "1dfa3a2736dde8c910a8ba0026189c76",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Property UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Property verified successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/subscriptions": {
+            "get": {
+                "tags": [
+                    "Admin - Subscription Management"
+                ],
+                "summary": "List all subscriptions (Admin only)",
+                "description": "Get a paginated list of all subscriptions with optional filtering by plan and status",
+                "operationId": "39f396643a6614eeea92e6ff8eec311a",
+                "parameters": [
+                    {
+                        "name": "plan",
+                        "in": "query",
+                        "description": "Filter by plan slug (free, premium, vip)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter by status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "active",
+                                "cancelled",
+                                "expired"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "description": "Sort field",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "sort_order",
+                        "in": "query",
+                        "description": "Sort order",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Items per page (max 100)",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Subscriptions retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/subscriptions/{id}": {
+            "get": {
+                "tags": [
+                    "Admin - Subscription Management"
+                ],
+                "summary": "Get subscription details (Admin only)",
+                "description": "Get detailed information about a specific subscription",
+                "operationId": "8054b68d88ee4a7a941a3cff15c748ad",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Subscription ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Subscription details retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Subscription not found"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/subscriptions/plans": {
+            "get": {
+                "tags": [
+                    "Admin - Subscription Management"
+                ],
+                "summary": "List subscription plans (Admin only)",
+                "description": "Get all available subscription plans with their details and active subscription counts",
+                "operationId": "ad1aad438a6c297ba6395d44ccf70f42",
+                "responses": {
+                    "200": {
+                        "description": "Subscription plans retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/subscriptions/stats": {
+            "get": {
+                "tags": [
+                    "Admin - Subscription Management"
+                ],
+                "summary": "Get subscription statistics (Admin only)",
+                "description": "Get subscription statistics including total, active, cancelled counts and breakdown by plan",
+                "operationId": "d24f2dcdbf5b76ee795fb03ecbe1fec7",
+                "responses": {
+                    "200": {
+                        "description": "Subscription statistics retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/system/health": {
+            "get": {
+                "tags": [
+                    "Admin - System Management"
+                ],
+                "summary": "Get system health status (Admin only)",
+                "description": "Check the health status of database, cache, and queue systems",
+                "operationId": "13761138af6a24ce9d40e3af300a43b3",
+                "responses": {
+                    "200": {
+                        "description": "System is healthy"
+                    },
+                    "503": {
+                        "description": "System is degraded"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/system/stats": {
+            "get": {
+                "tags": [
+                    "Admin - System Management"
+                ],
+                "summary": "Get system statistics (Admin only)",
+                "description": "Get system statistics including database table counts, cache status, and queue status",
+                "operationId": "47c659557d4922569c0a8f8dfe2b9f7e",
+                "responses": {
+                    "200": {
+                        "description": "System statistics retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/system/logs": {
+            "get": {
+                "tags": [
+                    "Admin - System Management"
+                ],
+                "summary": "Get recent error logs (Admin only)",
+                "description": "Get the last 50 lines from the Laravel error log",
+                "operationId": "216fe7257eb6f10d3e85ca92afd5fafb",
+                "responses": {
+                    "200": {
+                        "description": "Logs retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/system/queue": {
+            "get": {
+                "tags": [
+                    "Admin - System Management"
+                ],
+                "summary": "Get queue statistics (Admin only)",
+                "description": "Get queue statistics including pending and failed job counts",
+                "operationId": "d3255f18af1ecb3cc2502c3856c022f6",
+                "responses": {
+                    "200": {
+                        "description": "Queue statistics retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/users": {
+            "get": {
+                "tags": [
+                    "Admin - User Management"
+                ],
+                "summary": "List all users (Admin only)",
+                "description": "Get a paginated list of all users with optional filtering by role, search, and sorting",
+                "operationId": "9680ccebed17e49ff174b2a620cc0cd5",
+                "parameters": [
+                    {
+                        "name": "role",
+                        "in": "query",
+                        "description": "Filter by role",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "investor",
+                                "wholesaler",
+                                "admin"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Search by name or email",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "description": "Sort field",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "sort_order",
+                        "in": "query",
+                        "description": "Sort order",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Items per page (max 100)",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Users retrieved successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/users/{id}": {
+            "get": {
+                "tags": [
+                    "Admin - User Management"
+                ],
+                "summary": "Get user details (Admin only)",
+                "description": "Get detailed information about a specific user including roles, properties, and subscription",
+                "operationId": "96a5f01127fa460057178398a6ddb53b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "User UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User details retrieved successfully"
+                    },
+                    "404": {
+                        "description": "User not found"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Admin - User Management"
+                ],
+                "summary": "Update user (Admin only)",
+                "description": "Update user information including name, email, role, and password",
+                "operationId": "2255216aa7a93450befbfb0dd7dde469",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "User UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "role": {
+                                        "type": "string",
+                                        "enum": [
+                                            "investor",
+                                            "wholesaler",
+                                            "admin"
+                                        ]
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "minLength": 8
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "User updated successfully"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Admin - User Management"
+                ],
+                "summary": "Delete user (Admin only)",
+                "description": "Permanently delete a user account. Cannot delete your own account.",
+                "operationId": "a42d951fbf6b2f8e25663e69c1b817d2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "User UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User deleted successfully"
+                    },
+                    "422": {
+                        "description": "Cannot delete own account"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/users/{id}/suspend": {
+            "post": {
+                "tags": [
+                    "Admin - User Management"
+                ],
+                "summary": "Suspend user account (Admin only)",
+                "description": "Suspend a user account by removing email verification. Cannot suspend your own account.",
+                "operationId": "b528be14e4e4df70fa51c75969e5d543",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "User UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User suspended successfully"
+                    },
+                    "422": {
+                        "description": "Cannot suspend own account"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/admin/users/{id}/activate": {
+            "post": {
+                "tags": [
+                    "Admin - User Management"
+                ],
+                "summary": "Activate user account (Admin only)",
+                "description": "Activate a suspended user account by verifying their email",
+                "operationId": "9b7f56e8c44caa096965dc8dd3304a15",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "User UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User activated successfully"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/properties/{id}/view": {
             "post": {
                 "tags": [
@@ -1554,14 +2772,28 @@
         "securitySchemes": {
             "bearerAuth": {
                 "type": "http",
-                "name": "Authorization",
-                "in": "header",
+                "description": "Enter your access token in the format: Bearer YOUR_ACCESS_TOKEN\n\nGet your token by:\n- Registering a new account via POST /register\n- Logging in via POST /login\n\nThe token will be returned in the response as 'access_token'.",
                 "bearerFormat": "JWT",
                 "scheme": "bearer"
             }
         }
     },
     "tags": [
+        {
+            "name": "Admin - Analytics & Statistics"
+        },
+        {
+            "name": "Admin - Property Management"
+        },
+        {
+            "name": "Admin - Subscription Management"
+        },
+        {
+            "name": "Admin - System Management"
+        },
+        {
+            "name": "Admin - User Management"
+        },
         {
             "name": "Analytics"
         },
