@@ -24,6 +24,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'stripe_customer_id',
     ];
 
     /**
@@ -145,5 +146,13 @@ class User extends Authenticatable
     {
         $subscription = $this->subscription;
         return $subscription ? $subscription->plan : null;
+    }
+
+    /**
+     * Get all transactions for this user
+     */
+    public function transactions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Transaction::class);
     }
 }

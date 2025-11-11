@@ -67,6 +67,24 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
     Route::get('/properties/{property}/estimates', [\App\Http\Controllers\RehabEstimateController::class, 'getEstimateHistory']);
     Route::get('/estimates/{estimate}', [\App\Http\Controllers\RehabEstimateController::class, 'show']);
     
+    // Payment routes (require auth)
+    Route::post('/payments/intent', [\App\Http\Controllers\PaymentController::class, 'createIntent']);
+    Route::post('/payments/confirm', [\App\Http\Controllers\PaymentController::class, 'confirm']);
+    Route::get('/payments/transactions', [\App\Http\Controllers\PaymentController::class, 'transactions']);
+    Route::get('/payments/transactions/{transaction}', [\App\Http\Controllers\PaymentController::class, 'show']);
+    
+    // Refund routes (require auth)
+    Route::post('/refunds', [\App\Http\Controllers\RefundController::class, 'create']);
+    Route::get('/refunds/{refund}', [\App\Http\Controllers\RefundController::class, 'show']);
+    
+    // Subscription routes (require auth)
+    Route::get('/subscriptions/plans', [\App\Http\Controllers\SubscriptionController::class, 'plans']);
+    Route::post('/subscriptions/checkout', [\App\Http\Controllers\SubscriptionController::class, 'checkout']);
+    Route::post('/subscriptions', [\App\Http\Controllers\SubscriptionController::class, 'store']);
+    Route::get('/subscriptions/current', [\App\Http\Controllers\SubscriptionController::class, 'current']);
+    Route::post('/subscriptions/cancel', [\App\Http\Controllers\SubscriptionController::class, 'cancel']);
+    Route::get('/subscriptions/history', [\App\Http\Controllers\SubscriptionController::class, 'history']);
+    
     // Admin routes (require admin role)
     Route::middleware('admin')->prefix('admin')->group(function () {
         // User management
@@ -102,6 +120,11 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         Route::get('/subscriptions/plans', [\App\Http\Controllers\Admin\AdminSubscriptionController::class, 'plans']);
         Route::get('/subscriptions/stats', [\App\Http\Controllers\Admin\AdminSubscriptionController::class, 'stats']);
         
+        // Transaction management
+        Route::get('/transactions', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'index']);
+        Route::get('/transactions/stats', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'stats']);
+        Route::get('/transactions/{transaction}', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'show']);
+        
         // System management
         Route::get('/system/health', [\App\Http\Controllers\Admin\AdminSystemController::class, 'health']);
         Route::get('/system/stats', [\App\Http\Controllers\Admin\AdminSystemController::class, 'stats']);
@@ -109,4 +132,7 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         Route::get('/system/queue', [\App\Http\Controllers\Admin\AdminSystemController::class, 'queue']);
     });
 });
+
+// Webhook routes (no auth required, but signature verified)
+Route::post('/webhooks/stripe', [\App\Http\Controllers\StripeWebhookController::class, 'handle']);
 

@@ -934,6 +934,217 @@
                 ]
             }
         },
+        "/api/v1/admin/transactions": {
+            "get": {
+                "tags": [
+                    "Admin - Transactions"
+                ],
+                "summary": "List all transactions (Admin only)",
+                "description": "Get a paginated list of all transactions with optional filtering and sorting",
+                "operationId": "9f18979450c42801220a4a597a407ee5",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Items per page",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter by status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "completed",
+                                "failed",
+                                "refunded",
+                                "partially_refunded"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "Filter by type",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "payment",
+                                "refund",
+                                "subscription",
+                                "one_time"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "description": "Filter by user ID",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "description": "Filter from date (YYYY-MM-DD)",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "description": "Filter to date (YYYY-MM-DD)",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "description": "Sort field",
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "sort_order",
+                        "in": "query",
+                        "description": "Sort order",
+                        "schema": {
+                            "type": "string",
+                            "default": "desc",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transactions retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin only"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/admin/transactions/stats": {
+            "get": {
+                "tags": [
+                    "Admin - Transactions"
+                ],
+                "summary": "Get transaction statistics (Admin only)",
+                "description": "Get aggregated statistics about transactions including totals, counts, and trends",
+                "operationId": "434ad9cc0de3318b5d523c19d5bbfaf6",
+                "parameters": [
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "description": "Filter from date (YYYY-MM-DD)",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "description": "Filter to date (YYYY-MM-DD)",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Statistics retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin only"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/admin/transactions/{transaction}": {
+            "get": {
+                "tags": [
+                    "Admin - Transactions"
+                ],
+                "summary": "Get transaction details (Admin only)",
+                "description": "Get detailed information about a specific transaction",
+                "operationId": "ccdc2d8d447f105d496cce1788459b5d",
+                "parameters": [
+                    {
+                        "name": "transaction",
+                        "in": "path",
+                        "description": "Transaction UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transaction retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Transaction not found"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin only"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/admin/users": {
             "get": {
                 "tags": [
@@ -2103,6 +2314,220 @@
                 ]
             }
         },
+        "/api/v1/payments/intent": {
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Create payment intent",
+                "description": "Create a Stripe payment intent for a one-time payment. Returns client_secret for frontend confirmation.",
+                "operationId": "81da732a261c953b4387ab25caeda495",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "amount"
+                                ],
+                                "properties": {
+                                    "amount": {
+                                        "description": "Amount in dollars",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 29.99
+                                    },
+                                    "currency": {
+                                        "description": "Currency code (default: usd)",
+                                        "type": "string",
+                                        "example": "usd"
+                                    },
+                                    "description": {
+                                        "description": "Payment description",
+                                        "type": "string",
+                                        "example": "Premium subscription payment"
+                                    },
+                                    "metadata": {
+                                        "description": "Additional metadata",
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Payment intent created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/payments/confirm": {
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Confirm payment intent",
+                "description": "Confirm a payment intent after client-side confirmation. Updates transaction status.",
+                "operationId": "c4dbb2fcc1c6a3b736d089cdfef7b73e",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "payment_intent_id"
+                                ],
+                                "properties": {
+                                    "payment_intent_id": {
+                                        "description": "Stripe payment intent ID",
+                                        "type": "string",
+                                        "example": "pi_1234567890"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Payment confirmed successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "404": {
+                        "description": "Transaction not found"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/payments/transactions": {
+            "get": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Get user transaction history",
+                "description": "Get paginated list of all transactions for the authenticated user.",
+                "operationId": "367623e541a98f25543c26d772490835",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Items per page",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter by status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "completed",
+                                "failed",
+                                "refunded",
+                                "partially_refunded"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "Filter by type",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "payment",
+                                "refund",
+                                "subscription",
+                                "one_time"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transactions retrieved successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/payments/transactions/{transaction}": {
+            "get": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Get transaction details",
+                "description": "Get detailed information about a specific transaction.",
+                "operationId": "bde1c33334fe4638b064b259970da846",
+                "parameters": [
+                    {
+                        "name": "transaction",
+                        "in": "path",
+                        "description": "Transaction UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transaction retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Transaction not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/properties": {
             "get": {
                 "tags": [
@@ -2620,6 +3045,107 @@
                 ]
             }
         },
+        "/api/v1/refunds": {
+            "post": {
+                "tags": [
+                    "Refunds"
+                ],
+                "summary": "Create refund",
+                "description": "Create a full or partial refund for a completed transaction. Only the transaction owner or admin can create refunds.",
+                "operationId": "9b7f5e7dfb31fa9198d93fbcabc75be5",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "transaction_id"
+                                ],
+                                "properties": {
+                                    "transaction_id": {
+                                        "description": "Transaction UUID to refund",
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "example": "019a5882-c272-71eb-97c4-3d81aa7a4807"
+                                    },
+                                    "amount": {
+                                        "description": "Partial refund amount (optional, defaults to full refund)",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 15
+                                    },
+                                    "reason": {
+                                        "description": "Reason for refund",
+                                        "type": "string",
+                                        "enum": [
+                                            "duplicate",
+                                            "fraudulent",
+                                            "requested_by_customer"
+                                        ],
+                                        "example": "requested_by_customer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Refund created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error or refund not allowed"
+                    },
+                    "404": {
+                        "description": "Transaction not found"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/refunds/{refund}": {
+            "get": {
+                "tags": [
+                    "Refunds"
+                ],
+                "summary": "Get refund details",
+                "description": "Get detailed information about a specific refund transaction.",
+                "operationId": "8b9f31cc7ee097413588c13a187abdb7",
+                "parameters": [
+                    {
+                        "name": "refund",
+                        "in": "path",
+                        "description": "Refund transaction UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Refund retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Refund not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/properties/{id}/estimate": {
             "post": {
                 "tags": [
@@ -2766,6 +3292,228 @@
                     }
                 ]
             }
+        },
+        "/api/v1/subscriptions/plans": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get available subscription plans",
+                "description": "Get all active subscription plans available for purchase",
+                "operationId": "8dfa42ad451a58650679e0cef9a53195",
+                "responses": {
+                    "200": {
+                        "description": "Plans retrieved successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/subscriptions/checkout": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Create subscription checkout session",
+                "description": "Create a Stripe Checkout Session for subscription. Returns checkout URL for redirect.",
+                "operationId": "1624df694faff0c442e091af96d17aa7",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "plan_id"
+                                ],
+                                "properties": {
+                                    "plan_id": {
+                                        "description": "Subscription plan UUID",
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "example": "019a5882-c272-71eb-97c4-3d81aa7a4807"
+                                    },
+                                    "success_url": {
+                                        "description": "URL to redirect after successful payment",
+                                        "type": "string",
+                                        "example": "https://yourapp.com/success"
+                                    },
+                                    "cancel_url": {
+                                        "description": "URL to redirect if user cancels",
+                                        "type": "string",
+                                        "example": "https://yourapp.com/cancel"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Checkout session created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "404": {
+                        "description": "Plan not found"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/subscriptions": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Create subscription",
+                "description": "Create a subscription directly using a payment method ID from Stripe Elements. Alternative to checkout session.",
+                "operationId": "8eaf6abffb9b88be3b2c3c949d58bd80",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "plan_id",
+                                    "payment_method_id"
+                                ],
+                                "properties": {
+                                    "plan_id": {
+                                        "description": "Subscription plan UUID",
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "example": "019a5882-c272-71eb-97c4-3d81aa7a4807"
+                                    },
+                                    "payment_method_id": {
+                                        "description": "Stripe payment method ID from frontend",
+                                        "type": "string",
+                                        "example": "pm_1234567890"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Subscription created successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "404": {
+                        "description": "Plan not found"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/subscriptions/current": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get current subscription",
+                "description": "Get the current active subscription for the authenticated user",
+                "operationId": "991a7c5948196b5cfb50fb0fecb75096",
+                "responses": {
+                    "200": {
+                        "description": "Subscription retrieved successfully"
+                    },
+                    "404": {
+                        "description": "No active subscription found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/subscriptions/cancel": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Cancel subscription",
+                "description": "Cancel the current subscription. Can cancel immediately or at period end.",
+                "operationId": "18de1468076c9ca559f14d68350d59fa",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "immediately": {
+                                        "description": "Cancel immediately (true) or at period end (false, default)",
+                                        "type": "boolean",
+                                        "example": false
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Subscription cancelled successfully"
+                    },
+                    "404": {
+                        "description": "No active subscription found"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/subscriptions/history": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get subscription history",
+                "description": "Get all subscriptions (active and past) for the authenticated user",
+                "operationId": "aa8d12c9fcccda71c9979d15d751b07d",
+                "responses": {
+                    "200": {
+                        "description": "Subscription history retrieved successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -2792,6 +3540,9 @@
             "name": "Admin - System Management"
         },
         {
+            "name": "Admin - Transactions"
+        },
+        {
             "name": "Admin - User Management"
         },
         {
@@ -2804,10 +3555,19 @@
             "name": "Messaging"
         },
         {
+            "name": "Payments"
+        },
+        {
             "name": "Properties"
         },
         {
+            "name": "Refunds"
+        },
+        {
             "name": "AI Rehab Estimation"
+        },
+        {
+            "name": "Subscriptions"
         }
     ]
 }
