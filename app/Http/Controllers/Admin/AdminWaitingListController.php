@@ -29,19 +29,14 @@ class AdminWaitingListController extends Controller
     )]
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = WaitingListEntry::with(['plan', 'coupon']);
+        $query = WaitingListEntry::with(['coupon']);
 
         // Filter by status
         if ($request->has('status')) {
             $status = $request->get('status');
-            if (in_array($status, ['pending', 'payment_completed', 'account_created', 'cancelled'])) {
+            if (in_array($status, ['pending', 'account_created', 'cancelled'])) {
                 $query->where('status', $status);
             }
-        }
-
-        // Filter by plan
-        if ($request->has('plan_id')) {
-            $query->where('subscription_plan_id', $request->get('plan_id'));
         }
 
         // Search by email
@@ -85,7 +80,7 @@ class AdminWaitingListController extends Controller
     )]
     public function show(Request $request, string $id): WaitingListEntryResource
     {
-        $entry = WaitingListEntry::with(['plan', 'coupon', 'transactions'])->findOrFail($id);
+        $entry = WaitingListEntry::with(['coupon'])->findOrFail($id);
 
         return new WaitingListEntryResource($entry);
     }
@@ -106,30 +101,11 @@ class AdminWaitingListController extends Controller
     {
         $total = WaitingListEntry::count();
         $pending = WaitingListEntry::where('status', 'pending')->count();
-        $paymentCompleted = WaitingListEntry::where('status', 'payment_completed')->count();
         $accountCreated = WaitingListEntry::where('status', 'account_created')->count();
         $cancelled = WaitingListEntry::where('status', 'cancelled')->count();
 
-        $totalRevenue = WaitingListEntry::where('status', 'payment_completed')
-            ->orWhere('status', 'account_created')
-            ->sum('discounted_price');
-
-        $totalDiscounts = WaitingListEntry::where('status', 'payment_completed')
-            ->orWhere('status', 'account_created')
-            ->sum('discount_amount');
-
-        // Group by plan
-        $byPlan = WaitingListEntry::selectRaw('subscription_plan_id, COUNT(*) as count')
-            ->groupBy('subscription_plan_id')
-            ->with('plan:id,name')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'plan_id' => $item->subscription_plan_id,
-                    'plan_name' => $item->plan->name ?? 'Unknown',
-                    'count' => $item->count,
-                ];
-            });
+        // Count entries with coupons
+        $withCoupons = WaitingListEntry::whereNotNull('coupon_id')->count();
 
         return response()->json([
             'success' => true,
@@ -137,16 +113,10 @@ class AdminWaitingListController extends Controller
                 'total' => $total,
                 'by_status' => [
                     'pending' => $pending,
-                    'payment_completed' => $paymentCompleted,
                     'account_created' => $accountCreated,
                     'cancelled' => $cancelled,
                 ],
-                'revenue' => [
-                    'total' => (float) $totalRevenue,
-                    'total_discounts' => (float) $totalDiscounts,
-                    'net_revenue' => (float) ($totalRevenue - $totalDiscounts),
-                ],
-                'by_plan' => $byPlan,
+                'with_coupons' => $withCoupons,
             ],
         ]);
     }

@@ -46,14 +46,19 @@ class AdminStatisticsService
             $totalInquiries = Analytic::where('event_type', 'inquiry')->count();
 
             // Subscription statistics
-            $subscriptionsByPlan = Subscription::select('subscription_plan_id', DB::raw('count(*) as count'))
+            $subscriptionsByPlanId = Subscription::select('subscription_plan_id', DB::raw('count(*) as count'))
                 ->where('status', 'active')
-                ->with('plan')
-                ->get()
-                ->groupBy(function ($subscription) {
-                    return $subscription->plan->slug ?? 'unknown';
-                })
-                ->map->count();
+                ->groupBy('subscription_plan_id')
+                ->pluck('count', 'subscription_plan_id')
+                ->toArray();
+
+            // Map to plan slugs
+            $subscriptionsByPlan = [];
+            foreach ($subscriptionsByPlanId as $planId => $count) {
+                $plan = \App\Models\SubscriptionPlan::find($planId);
+                $slug = $plan ? $plan->slug : 'unknown';
+                $subscriptionsByPlan[$slug] = ($subscriptionsByPlan[$slug] ?? 0) + $count;
+            }
 
             $totalSubscriptions = Subscription::where('status', 'active')->count();
 
@@ -340,7 +345,9 @@ class AdminStatisticsService
         $cacheKey = "admin_top_wholesalers_{$limit}";
         
         return Cache::remember($cacheKey, now()->addMinutes(30), function () use ($limit) {
-            $wholesalers = User::role('wholesaler')
+            $wholesalers = User::whereHas('roles', function ($q) {
+                    $q->where('name', 'wholesaler');
+                })
                 ->withCount('properties')
                 ->get()
                 ->map(function ($wholesaler) {

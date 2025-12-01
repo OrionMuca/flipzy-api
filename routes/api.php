@@ -31,10 +31,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/properties/{property}', [\App\Http\Controllers\PropertyController::class, 'show']);
     
     // Waiting list routes (public)
-    Route::get('/waiting-list/plans', [\App\Http\Controllers\WaitingListController::class, 'plans']);
     Route::post('/waiting-list/validate-coupon', [\App\Http\Controllers\WaitingListController::class, 'validateCoupon']);
     Route::post('/waiting-list/register', [\App\Http\Controllers\WaitingListController::class, 'register']);
-    Route::post('/waiting-list/checkout', [\App\Http\Controllers\WaitingListController::class, 'checkout']);
     Route::get('/waiting-list/status', [\App\Http\Controllers\WaitingListController::class, 'status']);
 });
 

@@ -35,8 +35,7 @@ class AccountCreatedMail extends Mailable implements ShouldQueue
         public User $user,
         public string $temporaryPassword,
         public string $resetToken,
-        public string $resetUrl,
-        public ?string $planName = null
+        public string $resetUrl
     ) {}
 
     /**
@@ -65,7 +64,6 @@ class AccountCreatedMail extends Mailable implements ShouldQueue
                 'temporaryPassword' => $this->temporaryPassword,
                 'resetToken' => $this->resetToken,
                 'resetUrl' => $resetUrl,
-                'planName' => $this->planName,
                 'greeting' => 'Hi ' . $this->user->name . ',',
                 'recipientEmail' => $this->user->email,
                 'actionUrl' => $resetUrl,

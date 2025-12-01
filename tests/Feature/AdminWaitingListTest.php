@@ -2,11 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Coupon;
-use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Models\WaitingListEntry;
-use App\Models\WaitingListTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\Client;
 use App\Models\Role;
@@ -18,7 +15,6 @@ class AdminWaitingListTest extends TestCase
 
     protected User $admin;
     protected User $regularUser;
-    protected SubscriptionPlan $plan;
 
     protected function setUp(): void
     {
@@ -45,17 +41,12 @@ class AdminWaitingListTest extends TestCase
         // Create regular user
         $this->regularUser = User::factory()->create();
         $this->regularUser->assignRole('investor');
-
-        // Create plan
-        $this->plan = SubscriptionPlan::factory()->create();
     }
 
     /** @test */
     public function admin_can_list_waiting_list_entries(): void
     {
-        WaitingListEntry::factory()->count(5)->create([
-            'subscription_plan_id' => $this->plan->id,
-        ]);
+        WaitingListEntry::factory()->count(5)->create();
 
         $token = $this->admin->createToken('Test Token')->accessToken;
 
@@ -72,7 +63,6 @@ class AdminWaitingListTest extends TestCase
                         'email',
                         'name',
                         'status',
-                        'subscription_plan',
                     ],
                 ],
                 'pagination',
@@ -87,24 +77,22 @@ class AdminWaitingListTest extends TestCase
     {
         WaitingListEntry::factory()->create([
             'status' => 'pending',
-            'subscription_plan_id' => $this->plan->id,
         ]);
 
         WaitingListEntry::factory()->create([
-            'status' => 'payment_completed',
-            'subscription_plan_id' => $this->plan->id,
+            'status' => 'account_created',
         ]);
 
         $token = $this->admin->createToken('Test Token')->accessToken;
 
         $response = $this->withHeaders([
             'Authorization' => 'Bearer ' . $token,
-        ])->getJson('/api/v1/admin/waiting-list?status=payment_completed');
+        ])->getJson('/api/v1/admin/waiting-list?status=account_created');
 
         $response->assertStatus(200);
         $data = $response->json('data');
         $this->assertCount(1, $data);
-        $this->assertEquals('payment_completed', $data[0]['status']);
+        $this->assertEquals('account_created', $data[0]['status']);
     }
 
     /** @test */
@@ -112,12 +100,10 @@ class AdminWaitingListTest extends TestCase
     {
         WaitingListEntry::factory()->create([
             'email' => 'test@example.com',
-            'subscription_plan_id' => $this->plan->id,
         ]);
 
         WaitingListEntry::factory()->create([
             'email' => 'other@example.com',
-            'subscription_plan_id' => $this->plan->id,
         ]);
 
         $token = $this->admin->createToken('Test Token')->accessToken;
@@ -135,13 +121,7 @@ class AdminWaitingListTest extends TestCase
     /** @test */
     public function admin_can_get_entry_details(): void
     {
-        $entry = WaitingListEntry::factory()->create([
-            'subscription_plan_id' => $this->plan->id,
-        ]);
-
-        WaitingListTransaction::factory()->create([
-            'waiting_list_entry_id' => $entry->id,
-        ]);
+        $entry = WaitingListEntry::factory()->create();
 
         $token = $this->admin->createToken('Test Token')->accessToken;
 
@@ -157,8 +137,6 @@ class AdminWaitingListTest extends TestCase
                     'email',
                     'name',
                     'status',
-                    'subscription_plan',
-                    'transactions',
                 ],
             ])
             ->assertJson([
@@ -174,18 +152,14 @@ class AdminWaitingListTest extends TestCase
     {
         WaitingListEntry::factory()->count(3)->create([
             'status' => 'pending',
-            'subscription_plan_id' => $this->plan->id,
         ]);
 
         WaitingListEntry::factory()->count(2)->create([
-            'status' => 'payment_completed',
-            'subscription_plan_id' => $this->plan->id,
-            'discounted_price' => 49.99,
+            'status' => 'account_created',
         ]);
 
         WaitingListEntry::factory()->create([
-            'status' => 'account_created',
-            'subscription_plan_id' => $this->plan->id,
+            'status' => 'cancelled',
         ]);
 
         $token = $this->admin->createToken('Test Token')->accessToken;
@@ -200,8 +174,6 @@ class AdminWaitingListTest extends TestCase
                 'data' => [
                     'total',
                     'by_status',
-                    'revenue',
-                    'by_plan',
                 ],
             ])
             ->assertJson([
@@ -210,8 +182,8 @@ class AdminWaitingListTest extends TestCase
                     'total' => 6,
                     'by_status' => [
                         'pending' => 3,
-                        'payment_completed' => 2,
-                        'account_created' => 1,
+                        'account_created' => 2,
+                        'cancelled' => 1,
                     ],
                 ],
             ]);

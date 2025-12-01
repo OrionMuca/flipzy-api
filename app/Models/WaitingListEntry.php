@@ -16,16 +16,10 @@ class WaitingListEntry extends Model
     protected $fillable = [
         'email',
         'name',
-        'subscription_plan_id',
+        'subscription_plan_id', // Nullable, kept for backward compatibility
         'coupon_id',
         'coupon_code',
         'status',
-        'stripe_customer_id',
-        'stripe_subscription_id',
-        'stripe_checkout_session_id',
-        'original_price',
-        'discounted_price',
-        'discount_amount',
         'verification_token',
         'email_verified_at',
         'metadata',
@@ -33,24 +27,13 @@ class WaitingListEntry extends Model
     ];
 
     protected $casts = [
-        'original_price' => 'decimal:2',
-        'discounted_price' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
         'email_verified_at' => 'datetime',
         'account_created_at' => 'datetime',
         'metadata' => 'array',
     ];
 
     /**
-     * Get the subscription plan
-     */
-    public function plan(): BelongsTo
-    {
-        return $this->belongsTo(SubscriptionPlan::class, 'subscription_plan_id');
-    }
-
-    /**
-     * Get the coupon used
+     * Get the coupon used (for future use)
      */
     public function coupon(): BelongsTo
     {
@@ -59,6 +42,7 @@ class WaitingListEntry extends Model
 
     /**
      * Get all transactions for this entry
+     * @deprecated Transactions are no longer used in waiting list system
      */
     public function transactions(): HasMany
     {
@@ -94,16 +78,6 @@ class WaitingListEntry extends Model
     }
 
     /**
-     * Mark payment as completed
-     */
-    public function markPaymentCompleted(): void
-    {
-        $this->update([
-            'status' => 'payment_completed',
-        ]);
-    }
-
-    /**
      * Mark account as created
      */
     public function markAccountCreated(): void
@@ -112,14 +86,6 @@ class WaitingListEntry extends Model
             'status' => 'account_created',
             'account_created_at' => now(),
         ]);
-    }
-
-    /**
-     * Check if payment is completed
-     */
-    public function isPaymentCompleted(): bool
-    {
-        return $this->status === 'payment_completed';
     }
 
     /**
@@ -140,10 +106,12 @@ class WaitingListEntry extends Model
 
     /**
      * Scope: Payment completed entries
+     * @deprecated Payment status no longer exists in waiting list system
      */
     public function scopePaymentCompleted($query)
     {
-        return $query->where('status', 'payment_completed');
+        // Return empty query since payment_completed status no longer exists
+        return $query->whereRaw('1 = 0');
     }
 
     /**

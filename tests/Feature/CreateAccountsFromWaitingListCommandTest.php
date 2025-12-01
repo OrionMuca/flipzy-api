@@ -2,12 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Subscription;
-use App\Models\SubscriptionPlan;
-use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WaitingListEntry;
-use App\Models\WaitingListTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
@@ -16,31 +12,13 @@ class CreateAccountsFromWaitingListCommandTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected SubscriptionPlan $plan;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->plan = SubscriptionPlan::factory()->create([
-            'price' => 49.99,
-            'billing_interval' => 'monthly',
-        ]);
-    }
-
     /** @test */
-    public function it_creates_accounts_from_payment_completed_entries(): void
+    public function it_creates_accounts_from_pending_entries(): void
     {
-        $entry = WaitingListEntry::factory()->paymentCompleted()->create([
+        $entry = WaitingListEntry::factory()->create([
             'email' => 'test@example.com',
             'name' => 'Test User',
-            'subscription_plan_id' => $this->plan->id,
-            'stripe_customer_id' => 'cus_test123',
-            'stripe_subscription_id' => 'sub_test123',
-        ]);
-
-        WaitingListTransaction::factory()->completed()->create([
-            'waiting_list_entry_id' => $entry->id,
-            'amount' => 49.99,
+            'status' => 'pending',
         ]);
 
         Artisan::call('waiting-list:create-accounts');
@@ -53,35 +31,26 @@ class CreateAccountsFromWaitingListCommandTest extends TestCase
         $user = User::where('email', 'test@example.com')->first();
         $this->assertNotNull($user);
 
-        $this->assertDatabaseHas('subscriptions', [
-            'user_id' => $user->id,
-            'subscription_plan_id' => $this->plan->id,
-        ]);
-
-        $this->assertDatabaseHas('transactions', [
-            'user_id' => $user->id,
-            'type' => 'subscription',
-            'status' => 'completed',
-        ]);
-
         $entry->refresh();
         $this->assertEquals('account_created', $entry->status);
         $this->assertNotNull($entry->account_created_at);
     }
 
     /** @test */
-    public function it_skips_entries_without_payment_completed_status(): void
+    public function it_skips_entries_without_pending_status(): void
     {
         WaitingListEntry::factory()->create([
-            'status' => 'pending',
-            'subscription_plan_id' => $this->plan->id,
+            'status' => 'account_created',
+        ]);
+
+        WaitingListEntry::factory()->create([
+            'status' => 'cancelled',
         ]);
 
         Artisan::call('waiting-list:create-accounts');
 
-        $this->assertDatabaseMissing('users', [
-            'email' => 'test@example.com',
-        ]);
+        // Should not create any users since entries are not pending
+        $this->assertEquals(0, User::count());
     }
 
     /** @test */
@@ -91,38 +60,24 @@ class CreateAccountsFromWaitingListCommandTest extends TestCase
             'email' => 'existing@example.com',
         ]);
 
-        $entry = WaitingListEntry::factory()->paymentCompleted()->create([
+        $entry = WaitingListEntry::factory()->create([
             'email' => 'existing@example.com',
-            'subscription_plan_id' => $this->plan->id,
-        ]);
-
-        WaitingListTransaction::factory()->completed()->create([
-            'waiting_list_entry_id' => $entry->id,
+            'status' => 'pending',
         ]);
 
         Artisan::call('waiting-list:create-accounts');
 
-        $this->assertDatabaseHas('subscriptions', [
-            'user_id' => $existingUser->id,
-            'subscription_plan_id' => $this->plan->id,
-        ]);
-
         $entry->refresh();
         $this->assertEquals('account_created', $entry->status);
+        $this->assertNotNull($entry->account_created_at);
     }
 
     /** @test */
     public function it_respects_limit_option(): void
     {
-        WaitingListEntry::factory()->count(5)->paymentCompleted()->create([
-            'subscription_plan_id' => $this->plan->id,
+        WaitingListEntry::factory()->count(5)->create([
+            'status' => 'pending',
         ]);
-
-        foreach (WaitingListEntry::all() as $entry) {
-            WaitingListTransaction::factory()->completed()->create([
-                'waiting_list_entry_id' => $entry->id,
-            ]);
-        }
 
         Artisan::call('waiting-list:create-accounts', ['--limit' => 2]);
 
@@ -133,21 +88,15 @@ class CreateAccountsFromWaitingListCommandTest extends TestCase
     /** @test */
     public function it_creates_account_for_specific_email(): void
     {
-        WaitingListEntry::factory()->paymentCompleted()->create([
+        WaitingListEntry::factory()->create([
             'email' => 'specific@example.com',
-            'subscription_plan_id' => $this->plan->id,
+            'status' => 'pending',
         ]);
 
-        WaitingListEntry::factory()->paymentCompleted()->create([
+        WaitingListEntry::factory()->create([
             'email' => 'other@example.com',
-            'subscription_plan_id' => $this->plan->id,
+            'status' => 'pending',
         ]);
-
-        foreach (WaitingListEntry::all() as $entry) {
-            WaitingListTransaction::factory()->completed()->create([
-                'waiting_list_entry_id' => $entry->id,
-            ]);
-        }
 
         Artisan::call('waiting-list:create-accounts', ['--email' => 'specific@example.com']);
 
@@ -163,12 +112,8 @@ class CreateAccountsFromWaitingListCommandTest extends TestCase
     /** @test */
     public function it_handles_dry_run_mode(): void
     {
-        $entry = WaitingListEntry::factory()->paymentCompleted()->create([
-            'subscription_plan_id' => $this->plan->id,
-        ]);
-
-        WaitingListTransaction::factory()->completed()->create([
-            'waiting_list_entry_id' => $entry->id,
+        $entry = WaitingListEntry::factory()->create([
+            'status' => 'pending',
         ]);
 
         Artisan::call('waiting-list:create-accounts', ['--dry-run' => true]);
@@ -178,7 +123,7 @@ class CreateAccountsFromWaitingListCommandTest extends TestCase
         ]);
 
         $entry->refresh();
-        $this->assertEquals('payment_completed', $entry->status); // Should not change
+        $this->assertEquals('pending', $entry->status); // Should not change
     }
 }
 

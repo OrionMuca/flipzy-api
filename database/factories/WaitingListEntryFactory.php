@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Models\SubscriptionPlan;
 use App\Models\WaitingListEntry;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -20,22 +19,13 @@ class WaitingListEntryFactory extends Factory
      */
     public function definition(): array
     {
-        $plan = SubscriptionPlan::factory()->create();
-        $price = (float) $plan->price;
-
         return [
             'email' => fake()->unique()->safeEmail(),
             'name' => fake()->name(),
-            'subscription_plan_id' => $plan->id,
+            'subscription_plan_id' => null,
             'coupon_id' => null,
             'coupon_code' => null,
             'status' => 'pending',
-            'stripe_customer_id' => null,
-            'stripe_subscription_id' => null,
-            'stripe_checkout_session_id' => null,
-            'original_price' => $price,
-            'discounted_price' => $price,
-            'discount_amount' => 0,
             'verification_token' => fake()->sha256(),
             'email_verified_at' => null,
             'metadata' => [],
@@ -44,15 +34,13 @@ class WaitingListEntryFactory extends Factory
     }
 
     /**
-     * Entry with payment completed
+     * Entry with payment completed (deprecated - use pending status instead)
+     * @deprecated This method is deprecated. Use regular create() with status 'pending' instead.
      */
     public function paymentCompleted(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => 'payment_completed',
-            'stripe_customer_id' => 'cus_' . fake()->bothify('########'),
-            'stripe_subscription_id' => 'sub_' . fake()->bothify('########'),
-            'stripe_checkout_session_id' => 'cs_' . fake()->bothify('########'),
+            'status' => 'pending', // Changed from 'payment_completed' to 'pending'
         ]);
     }
 

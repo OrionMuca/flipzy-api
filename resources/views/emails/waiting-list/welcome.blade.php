@@ -20,22 +20,13 @@
         Thank you for joining our waiting list! We're <strong>thrilled</strong> to have you on board.
     </p>
     
-    <div style="background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e5e7eb;">
-        <p style="margin: 0 0 12px; color: #6b7280; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-            Your Selected Plan
-        </p>
-        <p style="margin: 0; color: #111827; font-size: 20px; font-weight: 700;">
-            {{ $entry->plan->name }}
-        </p>
-    </div>
-    
     @if($entry->coupon_code)
         <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 2px solid #10b981; border-radius: 12px; padding: 20px; margin: 24px 0;">
             <p style="margin: 0 0 8px; color: #065f46; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
                 🎁 Special Offer Applied!
             </p>
             <p style="margin: 0; color: #047857; font-size: 16px; line-height: 24px;">
-                You've used coupon code <strong style="color: #059669; font-size: 18px;">{{ $entry->coupon_code }}</strong> and saved <strong style="color: #059669; font-size: 18px;">${{ number_format($entry->discount_amount, 2) }}</strong>!
+                You've used coupon code <strong style="color: #059669; font-size: 18px;">{{ $entry->coupon_code }}</strong> for future use!
             </p>
         </div>
     @endif

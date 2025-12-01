@@ -54,14 +54,6 @@
         Click the button above to reset your password and log in. Or use the link below:
     </p>
     
-    @if($planName)
-        <div style="background: #ecfdf5; border-left: 4px solid #10b981; border-radius: 6px; padding: 16px; margin: 24px 0;">
-            <p style="margin: 0; color: #065f46; font-size: 14px; line-height: 20px;">
-                <strong>✨ You're all set!</strong> You have an active <strong>{{ $planName }}</strong> subscription. We're thrilled to have you on board!
-            </p>
-        </div>
-    @endif
-    
     <p style="margin: 0 0 20px; color: #374151; font-size: 15px; line-height: 24px;">
         If you have any questions, feel free to reach out to our support team. We're here to help!
     </p>

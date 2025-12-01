@@ -36,9 +36,11 @@ class AdminSystemController extends Controller
             'timestamp' => now()->toISOString(),
         ];
 
-        $allHealthy = collect($health)->every(function ($check) {
-            return $check['status'] === 'healthy';
-        });
+        $allHealthy = collect($health)
+            ->except('timestamp')
+            ->every(function ($check) {
+                return is_array($check) && ($check['status'] ?? '') === 'healthy';
+            });
 
         return response()->json([
             'success' => true,

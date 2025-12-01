@@ -4,9 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\WaitingListEntry;
 use App\Models\User;
-use App\Models\Subscription;
-use App\Models\Transaction;
-use App\Models\WaitingListTransaction;
 use App\Mail\AccountCreatedMail;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +30,7 @@ class CreateAccountsFromWaitingList extends Command
      *
      * @var string
      */
-    protected $description = 'Create user accounts from waiting list entries with payment completed status';
+    protected $description = 'Create user accounts from waiting list entries with pending status';
 
     /**
      * Execute the console command.
@@ -49,8 +46,8 @@ class CreateAccountsFromWaitingList extends Command
         }
 
         // Get entries to process
-        $query = WaitingListEntry::where('status', 'payment_completed')
-            ->with(['plan', 'transactions']);
+        $query = WaitingListEntry::where('status', 'pending')
+            ->with(['coupon']);
 
         if ($email) {
             $query->where('email', $email);
@@ -59,7 +56,7 @@ class CreateAccountsFromWaitingList extends Command
         $entries = $limit ? $query->limit($limit)->get() : $query->get();
 
         if ($entries->isEmpty()) {
-            $this->warn('No waiting list entries found with payment_completed status.');
+            $this->warn('No waiting list entries found with pending status.');
             return \Symfony\Component\Console\Command\Command::SUCCESS;
         }
 
@@ -77,10 +74,7 @@ class CreateAccountsFromWaitingList extends Command
                 $existingUser = User::where('email', $entry->email)->first();
 
                 if ($existingUser) {
-                    $this->warn("User with email {$entry->email} already exists. Linking subscription...");
-                    
-                    // Link subscription to existing user
-                    $this->linkSubscriptionToUser($entry, $existingUser, $dryRun);
+                    $this->warn("User with email {$entry->email} already exists. Skipping...");
                     
                     if (!$dryRun) {
                         $entry->markAccountCreated();
@@ -97,7 +91,6 @@ class CreateAccountsFromWaitingList extends Command
                 if ($dryRun) {
                     $this->line("Would create user: {$entry->email}");
                     $this->line("  Name: {$entry->name}");
-                    $this->line("  Plan: {$entry->plan->name}");
                     $this->line("  Temp Password: {$tempPassword}");
                 } else {
                     // Create user account
@@ -106,51 +99,10 @@ class CreateAccountsFromWaitingList extends Command
                         'email' => $entry->email,
                         'password' => Hash::make($tempPassword),
                         'email_verified_at' => now(),
-                        'stripe_customer_id' => $entry->stripe_customer_id,
                     ]);
-
-                    // Create subscription
-                    $subscription = Subscription::create([
-                        'user_id' => $user->id,
-                        'subscription_plan_id' => $entry->subscription_plan_id,
-                        'status' => 'active',
-                        'starts_at' => now(),
-                        'ends_at' => $entry->plan->billing_interval === 'monthly' 
-                            ? now()->addMonth() 
-                            : now()->addYear(),
-                        'stripe_subscription_id' => $entry->stripe_subscription_id,
-                        'stripe_customer_id' => $entry->stripe_customer_id,
-                    ]);
-
-                    // Migrate transactions
-                    foreach ($entry->transactions as $waitingListTransaction) {
-                        if ($waitingListTransaction->isCompleted()) {
-                            Transaction::create([
-                                'user_id' => $user->id,
-                                'subscription_id' => $subscription->id,
-                                'type' => 'subscription',
-                                'status' => 'completed',
-                                'amount' => $waitingListTransaction->amount,
-                                'currency' => $waitingListTransaction->currency,
-                                'original_amount' => $waitingListTransaction->original_amount,
-                                'stripe_payment_intent_id' => $waitingListTransaction->stripe_payment_intent_id,
-                                'stripe_charge_id' => $waitingListTransaction->stripe_charge_id,
-                                'stripe_customer_id' => $entry->stripe_customer_id,
-                                'description' => $waitingListTransaction->description ?? "Subscription: {$entry->plan->name}",
-                                'metadata' => array_merge($waitingListTransaction->metadata ?? [], [
-                                    'from_waiting_list' => true,
-                                    'waiting_list_entry_id' => $entry->id,
-                                ]),
-                                'processed_at' => $waitingListTransaction->processed_at,
-                            ]);
-                        }
-                    }
 
                     // Generate password reset token
                     $token = Password::createToken($user);
-                    
-                    // Note: AccountCreatedMail will construct the frontend URL itself
-                    // We pass the token here, but the Mailable will build the frontend URL
 
                     // Mark entry as account created
                     $entry->markAccountCreated();
@@ -161,8 +113,7 @@ class CreateAccountsFromWaitingList extends Command
                             $user,
                             $tempPassword,
                             $token,
-                            '', // Will be constructed in Mailable
-                            $entry->plan->name
+                            '' // Will be constructed in Mailable
                         ));
                     } catch (\Exception $e) {
                         Log::warning('Failed to send account created email', [
@@ -179,7 +130,6 @@ class CreateAccountsFromWaitingList extends Command
 
                     $this->info("✓ Created account for: {$entry->email}");
                     $this->line("  User ID: {$user->id}");
-                    $this->line("  Subscription ID: {$subscription->id}");
                     $this->line("  Temporary Password: {$tempPassword}");
                     $this->line("  Password Reset Link: {$resetUrl}");
 
@@ -213,60 +163,4 @@ class CreateAccountsFromWaitingList extends Command
         return \Symfony\Component\Console\Command\Command::SUCCESS;
     }
 
-    /**
-     * Link subscription to existing user
-     */
-    protected function linkSubscriptionToUser(WaitingListEntry $entry, User $user, bool $dryRun): void
-    {
-        if ($dryRun) {
-            return;
-        }
-
-        // Check if user already has active subscription
-        $existingSubscription = Subscription::where('user_id', $user->id)
-            ->where('status', 'active')
-            ->first();
-
-        if ($existingSubscription) {
-            $this->warn("  User already has active subscription. Skipping subscription creation.");
-            return;
-        }
-
-        // Create subscription
-        Subscription::create([
-            'user_id' => $user->id,
-            'subscription_plan_id' => $entry->subscription_plan_id,
-            'status' => 'active',
-            'starts_at' => now(),
-            'ends_at' => $entry->plan->billing_interval === 'monthly' 
-                ? now()->addMonth() 
-                : now()->addYear(),
-            'stripe_subscription_id' => $entry->stripe_subscription_id,
-            'stripe_customer_id' => $entry->stripe_customer_id ?? $user->stripe_customer_id,
-        ]);
-
-        // Migrate transactions
-        foreach ($entry->transactions as $waitingListTransaction) {
-            if ($waitingListTransaction->isCompleted()) {
-                Transaction::create([
-                    'user_id' => $user->id,
-                    'subscription_id' => Subscription::where('user_id', $user->id)->latest()->first()->id,
-                    'type' => 'subscription',
-                    'status' => 'completed',
-                    'amount' => $waitingListTransaction->amount,
-                    'currency' => $waitingListTransaction->currency,
-                    'original_amount' => $waitingListTransaction->original_amount,
-                    'stripe_payment_intent_id' => $waitingListTransaction->stripe_payment_intent_id,
-                    'stripe_charge_id' => $waitingListTransaction->stripe_charge_id,
-                    'stripe_customer_id' => $entry->stripe_customer_id ?? $user->stripe_customer_id,
-                    'description' => $waitingListTransaction->description ?? "Subscription: {$entry->plan->name}",
-                    'metadata' => array_merge($waitingListTransaction->metadata ?? [], [
-                        'from_waiting_list' => true,
-                        'waiting_list_entry_id' => $entry->id,
-                    ]),
-                    'processed_at' => $waitingListTransaction->processed_at,
-                ]);
-            }
-        }
-    }
 }

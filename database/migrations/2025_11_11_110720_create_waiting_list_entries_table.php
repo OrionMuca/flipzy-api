@@ -15,16 +15,10 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('email')->unique();
             $table->string('name');
-            $table->foreignUuid('subscription_plan_id')->constrained('subscription_plans')->onDelete('cascade');
+            $table->uuid('subscription_plan_id')->nullable(); // Made nullable, no foreign key constraint
             $table->uuid('coupon_id')->nullable();
             $table->string('coupon_code')->nullable(); // Store the code used for reference
-            $table->enum('status', ['pending', 'payment_completed', 'account_created', 'cancelled'])->default('pending');
-            $table->string('stripe_customer_id')->nullable();
-            $table->string('stripe_subscription_id')->nullable();
-            $table->string('stripe_checkout_session_id')->nullable();
-            $table->decimal('original_price', 10, 2);
-            $table->decimal('discounted_price', 10, 2);
-            $table->decimal('discount_amount', 10, 2)->default(0);
+            $table->enum('status', ['pending', 'account_created', 'cancelled'])->default('pending');
             $table->string('verification_token')->nullable()->unique(); // For email verification
             $table->timestamp('email_verified_at')->nullable();
             $table->json('metadata')->nullable();
@@ -33,8 +27,10 @@ return new class extends Migration
             
             $table->index('email');
             $table->index('status');
-            $table->index('stripe_customer_id');
             $table->index('verification_token');
+            
+            // Add foreign key for coupon_id (consolidated from separate migration)
+            $table->foreign('coupon_id')->references('id')->on('coupons')->onDelete('set null');
         });
     }
 
