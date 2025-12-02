@@ -33,6 +33,7 @@ Route::prefix('v1')->group(function () {
     // Waiting list routes (public)
     Route::post('/waiting-list/validate-coupon', [\App\Http\Controllers\WaitingListController::class, 'validateCoupon']);
     Route::post('/waiting-list/register', [\App\Http\Controllers\WaitingListController::class, 'register']);
+    Route::post('/waiting-list/verify-email', [\App\Http\Controllers\WaitingListController::class, 'verifyEmail']);
     Route::get('/waiting-list/status', [\App\Http\Controllers\WaitingListController::class, 'status']);
 });
 

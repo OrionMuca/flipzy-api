@@ -18,7 +18,7 @@ class AdminCouponController extends Controller
      * List all coupons
      */
     #[OA\Get(
-        path: "/api/v1/admin/coupons",
+        path: "/admin/coupons",
         summary: "List all coupons (Admin only)",
         description: "Get a paginated list of all coupons",
         tags: ["Admin - Coupon Management"],
@@ -60,7 +60,7 @@ class AdminCouponController extends Controller
      * Get coupon details
      */
     #[OA\Get(
-        path: "/api/v1/admin/coupons/{id}",
+        path: "/admin/coupons/{id}",
         summary: "Get coupon details (Admin only)",
         tags: ["Admin - Coupon Management"],
         security: [["bearerAuth" => []]],
@@ -80,7 +80,7 @@ class AdminCouponController extends Controller
      * Create new coupon
      */
     #[OA\Post(
-        path: "/api/v1/admin/coupons",
+        path: "/admin/coupons",
         summary: "Create new coupon (Admin only)",
         tags: ["Admin - Coupon Management"],
         security: [["bearerAuth" => []]],
@@ -150,7 +150,7 @@ class AdminCouponController extends Controller
      * Update coupon
      */
     #[OA\Put(
-        path: "/api/v1/admin/coupons/{id}",
+        path: "/admin/coupons/{id}",
         summary: "Update coupon (Admin only)",
         tags: ["Admin - Coupon Management"],
         security: [["bearerAuth" => []]],
@@ -222,7 +222,7 @@ class AdminCouponController extends Controller
      * Delete/Deactivate coupon
      */
     #[OA\Delete(
-        path: "/api/v1/admin/coupons/{id}",
+        path: "/admin/coupons/{id}",
         summary: "Delete coupon (Admin only)",
         tags: ["Admin - Coupon Management"],
         security: [["bearerAuth" => []]],

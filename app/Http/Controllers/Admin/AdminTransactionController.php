@@ -19,7 +19,7 @@ class AdminTransactionController extends Controller
      * List all transactions
      */
     #[OA\Get(
-        path: "/api/v1/admin/transactions",
+        path: "/admin/transactions",
         summary: "List all transactions (Admin only)",
         description: "Get a paginated list of all transactions with optional filtering and sorting",
         tags: ["Admin - Transactions"],
@@ -88,7 +88,7 @@ class AdminTransactionController extends Controller
      * Get transaction statistics
      */
     #[OA\Get(
-        path: "/api/v1/admin/transactions/stats",
+        path: "/admin/transactions/stats",
         summary: "Get transaction statistics (Admin only)",
         description: "Get aggregated statistics about transactions including totals, counts, and trends",
         tags: ["Admin - Transactions"],
@@ -158,7 +158,7 @@ class AdminTransactionController extends Controller
      * Get single transaction details
      */
     #[OA\Get(
-        path: "/api/v1/admin/transactions/{transaction}",
+        path: "/admin/transactions/{transaction}",
         summary: "Get transaction details (Admin only)",
         description: "Get detailed information about a specific transaction",
         tags: ["Admin - Transactions"],

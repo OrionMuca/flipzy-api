@@ -9,22 +9,24 @@ class PropertyEnrichmentService
 {
     public function __construct(
         protected AttomService $attomService,
-        protected GeoService $geoService
+        protected GeoService $geoService,
+        protected PropertySeedingService $seedingService
     ) {}
 
     /**
      * Enrich a property with data from external APIs (queued by default)
      */
-    public function enrichProperty(Property $property, bool $forceFresh = false): Property
+    public function enrichProperty(Property $property, bool $forceFresh = false, array $endpoints = ['detail', 'sale_history', 'comparable_sales', 'events']): Property
     {
-        \App\Jobs\EnrichPropertyJob::dispatch($property, $forceFresh);
+        // Use the new comprehensive ATTOM enrichment
+        \App\Jobs\EnrichPropertyWithAttomJob::dispatch($property, $endpoints, $forceFresh);
         return $property;
     }
 
     /**
      * Perform the actual enrichment
      */
-    public function performEnrichment(Property $property, bool $forceFresh = false): Property
+    public function performEnrichment(Property $property, bool $forceFresh = false, array $endpoints = ['detail', 'sale_history', 'comparable_sales', 'events']): Property
     {
         $enrichmentData = [
             'attom_data' => null,
@@ -32,24 +34,37 @@ class PropertyEnrichmentService
         ];
 
         try {
-            $attomData = $this->attomService->getPropertyDetails(
-                $property->address,
-                $property->city,
-                $property->state,
-                $property->zip_code,
-                $forceFresh
-            );
-
-            if ($attomData) {
-                $enrichmentData['attom_data'] = $attomData['raw_data'] ?? $attomData;
-                $this->updatePropertyFromAttom($property, $attomData);
-            }
+            // Use comprehensive ATTOM enrichment
+            $this->seedingService->enrichProperty($property, $endpoints, $forceFresh);
+            $enrichmentData['attom_data'] = $property->attom_data;
         } catch (\Exception $e) {
             Log::error('ATTOM enrichment failed', [
                 'property_id' => $property->id,
                 'address' => $property->address,
                 'error' => $e->getMessage(),
             ]);
+            
+            // Fallback to basic enrichment if comprehensive fails
+            try {
+                $attomData = $this->attomService->getPropertyDetails(
+                    $property->address,
+                    $property->city,
+                    $property->state,
+                    $property->zip_code,
+                    $forceFresh,
+                    $property
+                );
+
+                if ($attomData) {
+                    $enrichmentData['attom_data'] = $attomData['raw_data'] ?? $attomData;
+                    $this->updatePropertyFromAttom($property, $attomData);
+                }
+            } catch (\Exception $fallbackException) {
+                Log::error('ATTOM fallback enrichment also failed', [
+                    'property_id' => $property->id,
+                    'error' => $fallbackException->getMessage(),
+                ]);
+            }
         }
 
         // Geocode address if coordinates are missing

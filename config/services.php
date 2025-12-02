@@ -38,6 +38,19 @@ return [
     'attom' => [
         'api_key' => env('ATTOM_API_KEY'),
         'api_url' => env('ATTOM_API_URL', 'https://api.gateway.attomdata.com'),
+        'rate_limit' => [
+            'requests_per_minute' => env('ATTOM_RATE_LIMIT', 60),
+            'requests_per_hour' => env('ATTOM_RATE_LIMIT_HOUR', 1000),
+        ],
+        'timeout' => env('ATTOM_TIMEOUT', 30),
+        'retry' => [
+            'max_attempts' => env('ATTOM_MAX_RETRIES', 3),
+            'backoff_multiplier' => env('ATTOM_BACKOFF', 2),
+        ],
+        'cache' => [
+            'ttl_days' => env('ATTOM_CACHE_TTL', 7),
+            'enabled' => env('ATTOM_CACHE_ENABLED', true),
+        ],
     ],
 
     'estated' => [

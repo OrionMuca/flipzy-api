@@ -22,7 +22,13 @@
                 padding: 24px 20px !important; 
             }
             .email-header-padding { 
-                padding: 32px 20px 24px !important; 
+                padding: 12px 16px !important; 
+            }
+            .email-header-padding h1 {
+                font-size: 22px !important;
+            }
+            .email-header-padding img {
+                max-width: 100px !important;
             }
             .email-footer-padding { 
                 padding: 24px 20px !important; 

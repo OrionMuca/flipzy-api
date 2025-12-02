@@ -29,7 +29,6 @@ class WaitingListService
     public function register(array $data): array
     {
         try {
-            // Validate email doesn't already exist in waiting list
             $existingEntry = WaitingListEntry::where('email', $data['email'])->first();
             if ($existingEntry) {
                 return [
@@ -90,6 +89,11 @@ class WaitingListService
                 'verification_token' => Str::random(64),
                 'metadata' => $data['metadata'] ?? [],
             ]);
+
+            // Increment coupon usage count if coupon was used
+            if ($coupon) {
+                $this->couponService->applyCoupon($coupon);
+            }
 
             // Send welcome email
             try {

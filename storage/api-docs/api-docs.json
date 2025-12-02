@@ -305,14 +305,14 @@
                 ]
             }
         },
-        "/api/v1/admin/coupons": {
+        "/admin/coupons": {
             "get": {
                 "tags": [
                     "Admin - Coupon Management"
                 ],
                 "summary": "List all coupons (Admin only)",
                 "description": "Get a paginated list of all coupons",
-                "operationId": "6f22fc7d646bb515d15712658a2f0ff1",
+                "operationId": "11e192369ee57b45028f51fe35d95714",
                 "responses": {
                     "200": {
                         "description": "Coupons retrieved successfully"
@@ -333,7 +333,7 @@
                 ],
                 "summary": "Create new coupon (Admin only)",
                 "description": "Create new coupon",
-                "operationId": "589c1dfbc5dca6fae6cf027b9aad11e0",
+                "operationId": "fbe1269db10e002788a54828f5df04e8",
                 "responses": {
                     "200": {
                         "description": "Coupon created successfully"
@@ -349,14 +349,14 @@
                 ]
             }
         },
-        "/api/v1/admin/coupons/{id}": {
+        "/admin/coupons/{id}": {
             "get": {
                 "tags": [
                     "Admin - Coupon Management"
                 ],
                 "summary": "Get coupon details (Admin only)",
                 "description": "Get coupon details",
-                "operationId": "3402d307719bb72e5730f484b48f4b95",
+                "operationId": "bde120f9d8eabad5c2de1de71bc37e2c",
                 "responses": {
                     "200": {
                         "description": "Coupon retrieved successfully"
@@ -377,7 +377,7 @@
                 ],
                 "summary": "Update coupon (Admin only)",
                 "description": "Update coupon",
-                "operationId": "31670db7ee9e9252cd8193edd86884c4",
+                "operationId": "788876c2d593a694dab6d3070eb527ec",
                 "responses": {
                     "200": {
                         "description": "Coupon updated successfully"
@@ -401,7 +401,7 @@
                 ],
                 "summary": "Delete coupon (Admin only)",
                 "description": "Delete/Deactivate coupon",
-                "operationId": "caa142aec6cced60f0d86d0f711d6079",
+                "operationId": "81b12711ae537ca22a560ba9aae46c99",
                 "responses": {
                     "200": {
                         "description": "Coupon deleted successfully"
@@ -1046,14 +1046,14 @@
                 ]
             }
         },
-        "/api/v1/admin/transactions": {
+        "/admin/transactions": {
             "get": {
                 "tags": [
                     "Admin - Transactions"
                 ],
                 "summary": "List all transactions (Admin only)",
                 "description": "Get a paginated list of all transactions with optional filtering and sorting",
-                "operationId": "9f18979450c42801220a4a597a407ee5",
+                "operationId": "c85174dcd906c29c9e3a3af3827a256a",
                 "parameters": [
                     {
                         "name": "page",
@@ -1170,14 +1170,14 @@
                 ]
             }
         },
-        "/api/v1/admin/transactions/stats": {
+        "/admin/transactions/stats": {
             "get": {
                 "tags": [
                     "Admin - Transactions"
                 ],
                 "summary": "Get transaction statistics (Admin only)",
                 "description": "Get aggregated statistics about transactions including totals, counts, and trends",
-                "operationId": "434ad9cc0de3318b5d523c19d5bbfaf6",
+                "operationId": "5421cc8739cbc0782f1d41eff817ee14",
                 "parameters": [
                     {
                         "name": "date_from",
@@ -1216,14 +1216,14 @@
                 ]
             }
         },
-        "/api/v1/admin/transactions/{transaction}": {
+        "/admin/transactions/{transaction}": {
             "get": {
                 "tags": [
                     "Admin - Transactions"
                 ],
                 "summary": "Get transaction details (Admin only)",
                 "description": "Get detailed information about a specific transaction",
-                "operationId": "ccdc2d8d447f105d496cce1788459b5d",
+                "operationId": "89a82d64e154707ca46de293b1b3317e",
                 "parameters": [
                     {
                         "name": "transaction",
@@ -1553,14 +1553,14 @@
                 ]
             }
         },
-        "/api/v1/admin/waiting-list": {
+        "/admin/waiting-list": {
             "get": {
                 "tags": [
                     "Admin - Waiting List Management"
                 ],
                 "summary": "List all waiting list entries (Admin only)",
                 "description": "Get a paginated list of all waiting list entries",
-                "operationId": "c410532d8a2d3229a9702d091c3ccac1",
+                "operationId": "d89cd421985a286d4fe099005dc27964",
                 "responses": {
                     "200": {
                         "description": "Entries retrieved successfully"
@@ -1576,20 +1576,103 @@
                 ]
             }
         },
-        "/api/v1/admin/waiting-list/{id}": {
+        "/admin/waiting-list/{id}": {
             "get": {
                 "tags": [
                     "Admin - Waiting List Management"
                 ],
                 "summary": "Get waiting list entry details (Admin only)",
                 "description": "Get waiting list entry details",
-                "operationId": "35ce9cff8e62cf703771d932bcfc66ac",
+                "operationId": "22a8d32ec7771e14f81fda7de06bce49",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "Entry retrieved successfully"
+                        "description": "Entry retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "format": "email"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "pending",
+                                                        "account_created",
+                                                        "cancelled"
+                                                    ]
+                                                },
+                                                "coupon_code": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "email_verified": {
+                                                    "type": "boolean"
+                                                },
+                                                "email_verified_at": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "nullable": true
+                                                },
+                                                "account_created": {
+                                                    "type": "boolean"
+                                                },
+                                                "account_created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "nullable": true
+                                                },
+                                                "metadata": {
+                                                    "type": "object",
+                                                    "nullable": true
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "404": {
                         "description": "Entry not found"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
                     }
                 },
                 "security": [
@@ -1599,14 +1682,14 @@
                 ]
             }
         },
-        "/api/v1/admin/waiting-list/stats": {
+        "/admin/waiting-list/stats": {
             "get": {
                 "tags": [
                     "Admin - Waiting List Management"
                 ],
                 "summary": "Get waiting list statistics (Admin only)",
                 "description": "Get waiting list statistics",
-                "operationId": "69eba84bc3489dea01d4a8edfe6297cc",
+                "operationId": "5bb8174ff725837f455e6f630ab5556d",
                 "responses": {
                     "200": {
                         "description": "Statistics retrieved successfully"
@@ -2018,7 +2101,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Login successful",
+                        "description": "Login successful. If email is not verified, a verification email will be automatically resent.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2042,6 +2125,11 @@
                                                 "token_type": {
                                                     "type": "string",
                                                     "example": "Bearer"
+                                                },
+                                                "email_verified": {
+                                                    "description": "Whether the user's email is verified",
+                                                    "type": "boolean",
+                                                    "example": true
                                                 }
                                             },
                                             "type": "object"
@@ -2138,6 +2226,136 @@
                         "bearerAuth": []
                     }
                 ]
+            }
+        },
+        "/api/v1/password/forgot": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Request password reset",
+                "description": "Send password reset link to user's email",
+                "operationId": "f2cf06aaad9a17c1c6fffd3d1bb12c7d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password reset link sent"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/v1/password/reset": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Reset password",
+                "description": "Reset user password using token from email",
+                "operationId": "3c711d255371a1b4b1432add9e1d1d28",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "token",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    },
+                                    "token": {
+                                        "type": "string",
+                                        "example": "reset-token-here"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "newpassword123"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "newpassword123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password reset successfully"
+                    },
+                    "422": {
+                        "description": "Validation error or invalid token"
+                    }
+                }
+            }
+        },
+        "/api/v1/email/verify": {
+            "get": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Verify email address",
+                "description": "Verify user email address using token from email",
+                "operationId": "121c5ad30379ed792cfffd108126647a",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "email",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "email"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Email verified successfully"
+                    },
+                    "422": {
+                        "description": "Invalid or expired token"
+                    }
+                }
             }
         },
         "/conversations": {
@@ -3693,28 +3911,13 @@
                 ]
             }
         },
-        "/api/v1/waiting-list/plans": {
-            "get": {
-                "tags": [
-                    "Waiting List"
-                ],
-                "summary": "Get available subscription plans",
-                "description": "Get all active subscription plans available for waiting list registration",
-                "operationId": "361e9312285e88a6d5fb33add25020bd",
-                "responses": {
-                    "200": {
-                        "description": "Plans retrieved successfully"
-                    }
-                }
-            }
-        },
         "/api/v1/waiting-list/validate-coupon": {
             "post": {
                 "tags": [
                     "Waiting List"
                 ],
                 "summary": "Validate coupon code",
-                "description": "Validate a coupon code and get discount information",
+                "description": "Validate a coupon code for future use",
                 "operationId": "88abaeda37085dc9838f2e52e0b125c7",
                 "requestBody": {
                     "required": true,
@@ -3722,19 +3925,13 @@
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "code",
-                                    "plan_id"
+                                    "code"
                                 ],
                                 "properties": {
                                     "code": {
                                         "description": "Coupon code",
                                         "type": "string",
                                         "example": "EARLYBIRD50"
-                                    },
-                                    "plan_id": {
-                                        "description": "Subscription plan UUID",
-                                        "type": "string",
-                                        "format": "uuid"
                                     },
                                     "email": {
                                         "description": "User email (optional, for user limit checking)",
@@ -3749,10 +3946,72 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Coupon validated successfully"
+                        "description": "Coupon validated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "coupon": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "format": "uuid"
+                                                        },
+                                                        "code": {
+                                                            "type": "string",
+                                                            "example": "EARLYBIRD50"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "description": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "400": {
-                        "description": "Validation error or invalid coupon"
+                        "description": "Validation error or invalid coupon",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "errors": {
+                                            "description": "Validation errors (when validation fails)",
+                                            "type": "object",
+                                            "nullable": true
+                                        },
+                                        "error": {
+                                            "description": "Error message (when coupon is invalid)",
+                                            "type": "string",
+                                            "example": "Coupon code not found",
+                                            "nullable": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -3763,7 +4022,7 @@
                     "Waiting List"
                 ],
                 "summary": "Register for waiting list",
-                "description": "Register email and subscription plan selection for waiting list",
+                "description": "Register email and name for waiting list. Account will be created when platform launches.",
                 "operationId": "0d77f598422baf419fc305e8a11ad42c",
                 "requestBody": {
                     "required": true,
@@ -3772,8 +4031,7 @@
                             "schema": {
                                 "required": [
                                     "email",
-                                    "name",
-                                    "subscription_plan_id"
+                                    "name"
                                 ],
                                 "properties": {
                                     "email": {
@@ -3785,13 +4043,8 @@
                                         "description": "User name",
                                         "type": "string"
                                     },
-                                    "subscription_plan_id": {
-                                        "description": "Subscription plan UUID",
-                                        "type": "string",
-                                        "format": "uuid"
-                                    },
                                     "coupon_code": {
-                                        "description": "Optional coupon code",
+                                        "description": "Optional coupon code for future use",
                                         "type": "string"
                                     }
                                 },
@@ -3801,69 +4054,104 @@
                     }
                 },
                 "responses": {
-                    "200": {
-                        "description": "Registration successful"
-                    },
-                    "400": {
-                        "description": "Validation error"
-                    }
-                }
-            }
-        },
-        "/api/v1/waiting-list/checkout": {
-            "post": {
-                "tags": [
-                    "Waiting List"
-                ],
-                "summary": "Create checkout session",
-                "description": "Create Stripe checkout session for waiting list subscription purchase",
-                "operationId": "f2fc9719904bf03da65a222ac5af9ce6",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "email",
-                                    "subscription_plan_id"
-                                ],
-                                "properties": {
-                                    "email": {
-                                        "description": "User email",
-                                        "type": "string",
-                                        "format": "email"
+                    "201": {
+                        "description": "Registration successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Successfully registered for waiting list"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "format": "email"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "pending",
+                                                        "account_created",
+                                                        "cancelled"
+                                                    ]
+                                                },
+                                                "coupon_code": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "email_verified": {
+                                                    "type": "boolean"
+                                                },
+                                                "email_verified_at": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "nullable": true
+                                                },
+                                                "account_created": {
+                                                    "type": "boolean"
+                                                },
+                                                "account_created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "nullable": true
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
                                     },
-                                    "subscription_plan_id": {
-                                        "description": "Subscription plan UUID",
-                                        "type": "string",
-                                        "format": "uuid"
-                                    },
-                                    "coupon_code": {
-                                        "description": "Optional coupon code",
-                                        "type": "string"
-                                    },
-                                    "success_url": {
-                                        "description": "Success redirect URL",
-                                        "type": "string",
-                                        "format": "url"
-                                    },
-                                    "cancel_url": {
-                                        "description": "Cancel redirect URL",
-                                        "type": "string",
-                                        "format": "url"
-                                    }
-                                },
-                                "type": "object"
+                                    "type": "object"
+                                }
                             }
                         }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Checkout session created successfully"
                     },
                     "400": {
-                        "description": "Validation error"
+                        "description": "Validation error or registration failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "errors": {
+                                            "description": "Validation errors (when validation fails)",
+                                            "type": "object",
+                                            "nullable": true
+                                        },
+                                        "error": {
+                                            "description": "Error message (when registration fails)",
+                                            "type": "string",
+                                            "example": "This email is already registered on the waiting list",
+                                            "nullable": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -3874,7 +4162,7 @@
                     "Waiting List"
                 ],
                 "summary": "Get waiting list status",
-                "description": "Get registration status by email and verification token",
+                "description": "Get registration status by email and verification token. This endpoint only retrieves status and does not verify the email.",
                 "operationId": "652b5c0111a835e28255067dcbbe051d",
                 "parameters": [
                     {
@@ -3897,10 +4185,233 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Status retrieved successfully"
+                        "description": "Status retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "format": "email"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "pending",
+                                                        "account_created",
+                                                        "cancelled"
+                                                    ]
+                                                },
+                                                "coupon_code": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "email_verified": {
+                                                    "type": "boolean"
+                                                },
+                                                "email_verified_at": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "nullable": true
+                                                },
+                                                "account_created": {
+                                                    "type": "boolean"
+                                                },
+                                                "account_created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "nullable": true
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Entry not found"
+                        "description": "Entry not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Waiting list entry not found"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/waiting-list/verify-email": {
+            "post": {
+                "tags": [
+                    "Waiting List"
+                ],
+                "summary": "Verify email address",
+                "description": "Verify email address using token from email link. This will mark the email as verified.",
+                "operationId": "53c098476425d3f8ecd90d422ba77ec5",
+                "parameters": [
+                    {
+                        "name": "email",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "email"
+                        }
+                    },
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Email verified successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Email verified successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string",
+                                                    "format": "uuid"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "format": "email"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "pending",
+                                                        "account_created",
+                                                        "cancelled"
+                                                    ]
+                                                },
+                                                "email_verified": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                },
+                                                "email_verified_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Entry not found or invalid token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Waiting list entry not found or invalid verification token"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 }
             }

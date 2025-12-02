@@ -37,6 +37,11 @@ class Property extends Model
         'repair_estimate',
         'potential_profit',
         'attom_data',
+        'attom_sale_history',
+        'attom_comparable_sales',
+        'attom_property_events',
+        'attom_enrichment_status',
+        'attom_enriched_at',
         'estated_data',
         'enriched_at',
         'is_featured',
@@ -52,6 +57,11 @@ class Property extends Model
         'repair_estimate' => 'decimal:2',
         'potential_profit' => 'decimal:2',
         'attom_data' => 'array',
+        'attom_sale_history' => 'array',
+        'attom_comparable_sales' => 'array',
+        'attom_property_events' => 'array',
+        'attom_enrichment_status' => 'array',
+        'attom_enriched_at' => 'datetime',
         'estated_data' => 'array',
         'enriched_at' => 'datetime',
         'is_featured' => 'boolean',
@@ -145,5 +155,63 @@ class Property extends Model
     public function scopeVerified($query)
     {
         return $query->where('is_verified', true);
+    }
+
+
+    /**
+     * Check if property has been enriched with ATTOM data
+     */
+    public function hasAttomData(): bool
+    {
+        return !empty($this->attom_data) || !empty($this->attom_enriched_at);
+    }
+
+    /**
+     * Check if specific ATTOM endpoint has been enriched
+     */
+    public function hasAttomEndpoint(string $endpoint): bool
+    {
+        $status = $this->attom_enrichment_status ?? [];
+        return $status[$endpoint] ?? false;
+    }
+
+    /**
+     * Get latest sale price from ATTOM data
+     */
+    public function getLatestSalePrice(): ?float
+    {
+        $saleHistory = $this->attom_sale_history;
+        if (!$saleHistory || empty($saleHistory['latest_sale'])) {
+            return null;
+        }
+
+        return $saleHistory['latest_sale']['sale_price'] ?? null;
+    }
+
+    /**
+     * Get comparable sales count
+     */
+    public function getComparableSalesCount(): int
+    {
+        $comps = $this->attom_comparable_sales;
+        return $comps['total_comps'] ?? 0;
+    }
+
+    /**
+     * Get property events count by category
+     */
+    public function getPropertyEventsCount(string $category = 'all'): int
+    {
+        $events = $this->attom_property_events;
+        if (!$events) {
+            return 0;
+        }
+
+        if ($category === 'all') {
+            return $events['total_events'] ?? 0;
+        }
+
+        $categorized = $events['categorized'] ?? [];
+        return count($categorized[$category] ?? []);
     }
 }

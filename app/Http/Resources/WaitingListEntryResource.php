@@ -21,15 +21,15 @@ class WaitingListEntryResource extends JsonResource
             'status' => $this->status,
             'coupon_code' => $this->coupon_code,
             'email_verified' => $this->isEmailVerified(),
-            'email_verified_at' => $this->email_verified_at?->toISOString(),
+            'email_verified_at' => $this->email_verified_at?->toDateTimeString(),
             'account_created' => $this->isAccountCreated(),
-            'account_created_at' => $this->account_created_at?->toISOString(),
+            'account_created_at' => $this->account_created_at?->toDateTimeString(),
             'coupon' => $this->whenLoaded('coupon', function () {
                 return new CouponResource($this->coupon);
             }),
             'metadata' => $this->when($request->user()?->hasRole('admin'), $this->metadata ?? []),
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'created_at' => $this->created_at?->toDateTimeString(),
+            'updated_at' => $this->updated_at?->toDateTimeString(),
         ];
     }
 }

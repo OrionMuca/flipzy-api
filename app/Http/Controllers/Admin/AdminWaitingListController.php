@@ -17,7 +17,7 @@ class AdminWaitingListController extends Controller
      * List all waiting list entries
      */
     #[OA\Get(
-        path: "/api/v1/admin/waiting-list",
+        path: "/admin/waiting-list",
         summary: "List all waiting list entries (Admin only)",
         description: "Get a paginated list of all waiting list entries",
         tags: ["Admin - Waiting List Management"],
@@ -69,27 +69,60 @@ class AdminWaitingListController extends Controller
      * Get waiting list entry details
      */
     #[OA\Get(
-        path: "/api/v1/admin/waiting-list/{id}",
+        path: "/admin/waiting-list/{id}",
         summary: "Get waiting list entry details (Admin only)",
         tags: ["Admin - Waiting List Management"],
         security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "string", format: "uuid")),
+        ],
         responses: [
-            new OA\Response(response: 200, description: "Entry retrieved successfully"),
+            new OA\Response(
+                response: 200,
+                description: "Entry retrieved successfully",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "success", type: "boolean", example: true),
+                        new OA\Property(
+                            property: "data",
+                            type: "object",
+                            properties: [
+                                new OA\Property(property: "id", type: "string", format: "uuid"),
+                                new OA\Property(property: "email", type: "string", format: "email"),
+                                new OA\Property(property: "name", type: "string"),
+                                new OA\Property(property: "status", type: "string", enum: ["pending", "account_created", "cancelled"]),
+                                new OA\Property(property: "coupon_code", type: "string", nullable: true),
+                                new OA\Property(property: "email_verified", type: "boolean"),
+                                new OA\Property(property: "email_verified_at", type: "string", format: "date-time", nullable: true),
+                                new OA\Property(property: "account_created", type: "boolean"),
+                                new OA\Property(property: "account_created_at", type: "string", format: "date-time", nullable: true),
+                                new OA\Property(property: "metadata", type: "object", nullable: true),
+                                new OA\Property(property: "created_at", type: "string", format: "date-time"),
+                                new OA\Property(property: "updated_at", type: "string", format: "date-time"),
+                            ]
+                        ),
+                    ]
+                )
+            ),
             new OA\Response(response: 404, description: "Entry not found"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
         ]
     )]
-    public function show(Request $request, string $id): WaitingListEntryResource
+    public function show(Request $request, string $id): JsonResponse
     {
         $entry = WaitingListEntry::with(['coupon'])->findOrFail($id);
 
-        return new WaitingListEntryResource($entry);
+        return response()->json([
+            'success' => true,
+            'data' => new WaitingListEntryResource($entry),
+        ]);
     }
 
     /**
      * Get waiting list statistics
      */
     #[OA\Get(
-        path: "/api/v1/admin/waiting-list/stats",
+        path: "/admin/waiting-list/stats",
         summary: "Get waiting list statistics (Admin only)",
         tags: ["Admin - Waiting List Management"],
         security: [["bearerAuth" => []]],

@@ -50,19 +50,21 @@ class WaitingListWelcomeMail extends Mailable implements ShouldQueue
      */
     public function content(): Content
     {
-        // Use frontend URL for the verification link
+        // Use frontend URL for the verification and status links
         $frontendUrl = config('app.frontend_url');
-        $verificationLink = rtrim($frontendUrl, '/') . '/waiting-list/status?email=' . urlencode($this->entry->email) . '&token=' . $this->entry->verification_token;
+        $verificationLink = rtrim($frontendUrl, '/') . '/waiting-list/verify-email?email=' . urlencode($this->entry->email) . '&token=' . $this->entry->verification_token;
+        $statusLink = rtrim($frontendUrl, '/') . '/waiting-list/status?email=' . urlencode($this->entry->email) . '&token=' . $this->entry->verification_token;
 
         return new Content(
             view: 'emails.waiting-list.welcome',
             with: [
                 'entry' => $this->entry,
                 'verificationLink' => $verificationLink,
+                'statusLink' => $statusLink,
                 'greeting' => 'Hi ' . $this->entry->name . ',',
                 'recipientEmail' => $this->entry->email,
                 'actionUrl' => $verificationLink,
-                'actionText' => 'Check Your Status',
+                'actionText' => 'Verify Email',
                 'buttonColor' => '#6366f1',
             ],
         );
