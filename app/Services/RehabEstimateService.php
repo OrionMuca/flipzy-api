@@ -22,15 +22,19 @@ class RehabEstimateService
         ?User $user = null,
         array $options = []
     ): PropertyRehabEstimate {
-        // Check if API key is configured
-        if (!$this->isApiKeyConfigured()) {
-            throw new \RuntimeException(
-                'OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file.'
-            );
+        $useCalculations = $options['use_calculations'] ?? false;
+        $forceRefresh = $options['force_refresh'] ?? false;
+
+        // If calculations are forced or API key is not configured, use calculation fallback
+        if ($useCalculations || !$this->isApiKeyConfigured()) {
+            Log::info('Using calculation-based rehab estimate', [
+                'property_id' => $property->id,
+                'reason' => $useCalculations ? 'forced' : 'openai_key_missing',
+            ]);
+            return $this->generateEstimateWithCalculations($property, $user, $forceRefresh);
         }
 
         $model = $options['model'] ?? config('services.openai.model', $this->defaultModel);
-        $forceRefresh = $options['force_refresh'] ?? false;
 
         // Check cache first (unless force refresh)
         if (!$forceRefresh) {
@@ -461,6 +465,330 @@ IMPORTANT: Return ONLY valid JSON, no additional text or markdown formatting.";
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get();
+    }
+
+    /**
+     * Generate estimate using calculation-based formulas
+     */
+    protected function generateEstimateWithCalculations(
+        Property $property,
+        ?User $user = null,
+        bool $forceRefresh = false
+    ): PropertyRehabEstimate {
+        // Check cache first (unless force refresh)
+        if (!$forceRefresh) {
+            $cachedEstimate = $this->getCachedEstimate($property);
+            if ($cachedEstimate && $cachedEstimate->model_used === 'calculation-fallback') {
+                return $cachedEstimate;
+            }
+        }
+
+        // Prepare property data
+        $propertyData = $this->preparePropertyData($property);
+
+        // Calculate base cost
+        $baseCost = $this->calculateBaseCost($property, $propertyData);
+
+        // Calculate adjustments
+        $conditionAdjustment = $this->calculateConditionAdjustment($property, $baseCost);
+        $ageAdjustment = $this->calculateAgeAdjustment($property, $baseCost);
+        $regionalAdjustment = $this->calculateRegionalAdjustment($property, $baseCost);
+
+        // Apply image heuristic (more images = better documented = potentially better condition)
+        $imageAdjustment = $this->calculateImageAdjustment($propertyData, $baseCost);
+
+        // Calculate total cost
+        $totalCost = $baseCost 
+            + $conditionAdjustment 
+            + $ageAdjustment 
+            + $regionalAdjustment 
+            - $imageAdjustment; // Subtract because more images = lower uncertainty = potentially lower costs
+
+        // Ensure minimum cost
+        $totalCost = max($totalCost, 5000); // Minimum $5,000
+
+        // Generate cost breakdown
+        $breakdown = $this->generateCostBreakdown($totalCost, $property, $propertyData);
+
+        // Calculate labor and materials split
+        $laborPercentage = 40;
+        $materialsPercentage = 60;
+
+        // Estimate timeline based on property size and condition
+        $timelineWeeks = $this->estimateTimeline($property, $totalCost);
+
+        // Generate risk factors
+        $riskFactors = $this->generateRiskFactors($property, $propertyData);
+
+        // Generate notes
+        $notes = $this->generateCalculationNotes($property, $totalCost, $breakdown);
+
+        // Create estimate record
+        $estimate = PropertyRehabEstimate::create([
+            'property_id' => $property->id,
+            'requested_by' => $user?->id,
+            'ai_response' => json_encode([
+                'total_cost' => $totalCost,
+                'breakdown' => $breakdown,
+                'labor_percentage' => $laborPercentage,
+                'materials_percentage' => $materialsPercentage,
+                'timeline_weeks' => $timelineWeeks,
+                'risk_factors' => $riskFactors,
+                'notes' => $notes,
+                'confidence' => $this->calculateConfidence($propertyData),
+                'calculation_method' => 'formula-based',
+            ]),
+            'property_data' => $propertyData,
+            'model_used' => 'calculation-fallback',
+            'estimated_cost' => $totalCost,
+            'tokens_used' => null,
+        ]);
+
+        // Cache the estimate
+        $this->cacheEstimate($property, $estimate);
+
+        return $estimate;
+    }
+
+    /**
+     * Calculate base cost from property characteristics
+     */
+    protected function calculateBaseCost(Property $property, array $propertyData): float
+    {
+        $config = config('services.rehab_calculations', []);
+        $costPerSqft = $config['cost_per_sqft'] ?? [];
+        $bedroomMultiplier = $config['bedroom_multiplier'] ?? 2000;
+        $bathroomMultiplier = $config['bathroom_multiplier'] ?? 5000;
+
+        $propertyType = $property->property_type ?? 'house';
+        $sqftCost = $costPerSqft[$propertyType] ?? $costPerSqft['house'] ?? 50;
+
+        $baseCost = ($property->square_feet ?? 1500) * $sqftCost;
+        $bedroomCost = ($property->bedrooms ?? 3) * $bedroomMultiplier;
+        $bathroomCost = ($property->bathrooms ?? 2) * $bathroomMultiplier;
+
+        return $baseCost + $bedroomCost + $bathroomCost;
+    }
+
+    /**
+     * Calculate condition-based adjustment
+     */
+    protected function calculateConditionAdjustment(Property $property, float $baseCost): float
+    {
+        $config = config('services.rehab_calculations', []);
+        $multipliers = $config['condition_multipliers'] ?? [];
+        
+        $condition = $property->condition ?? 'fair';
+        $multiplier = $multipliers[$condition] ?? $multipliers['fair'] ?? 1.0;
+
+        // Adjustment is the difference from base (1.0)
+        return $baseCost * ($multiplier - 1.0);
+    }
+
+    /**
+     * Calculate age-based adjustment
+     */
+    protected function calculateAgeAdjustment(Property $property, float $baseCost): float
+    {
+        $config = config('services.rehab_calculations', []);
+        $adjustments = $config['age_adjustments'] ?? [];
+        
+        $yearBuilt = $property->year_built ?? 2000;
+        $currentYear = (int) date('Y');
+        $age = $currentYear - $yearBuilt;
+
+        $ageCategory = 'average';
+        if ($age < 15) {
+            $ageCategory = 'new';
+        } elseif ($age < 35) {
+            $ageCategory = 'modern';
+        } elseif ($age < 55) {
+            $ageCategory = 'average';
+        } elseif ($age < 75) {
+            $ageCategory = 'old';
+        } else {
+            $ageCategory = 'very_old';
+        }
+
+        $multiplier = $adjustments[$ageCategory] ?? $adjustments['average'] ?? 1.0;
+
+        // Adjustment is the difference from base (1.0)
+        return $baseCost * ($multiplier - 1.0);
+    }
+
+    /**
+     * Calculate regional cost adjustment
+     */
+    protected function calculateRegionalAdjustment(Property $property, float $baseCost): float
+    {
+        $config = config('services.rehab_calculations', []);
+        $multipliers = $config['regional_multipliers'] ?? [];
+        
+        $state = $property->state ?? '';
+        $multiplier = $multipliers[$state] ?? $multipliers['default'] ?? 1.0;
+
+        // Adjustment is the difference from base (1.0)
+        return $baseCost * ($multiplier - 1.0);
+    }
+
+    /**
+     * Calculate image-based adjustment (heuristic)
+     */
+    protected function calculateImageAdjustment(array $propertyData, float $baseCost): float
+    {
+        $config = config('services.rehab_calculations', []);
+        $heuristic = $config['image_heuristic'] ?? [];
+        
+        $imageCount = $propertyData['image_count'] ?? 0;
+        $minImages = $heuristic['min_images_for_confidence'] ?? 5;
+        $adjustmentPercent = $heuristic['confidence_adjustment'] ?? 0.1;
+
+        // If property has many images, it's better documented, so reduce uncertainty (lower costs)
+        if ($imageCount >= $minImages) {
+            return $baseCost * $adjustmentPercent;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Generate cost breakdown by category
+     */
+    protected function generateCostBreakdown(float $totalCost, Property $property, array $propertyData): array
+    {
+        $config = config('services.rehab_calculations', []);
+        $percentages = $config['breakdown_percentages'] ?? [];
+        
+        $breakdown = [];
+
+        // Standard categories
+        $breakdown['kitchen'] = (int) ($totalCost * ($percentages['kitchen'] ?? 25) / 100);
+        $breakdown['bathrooms'] = (int) ($totalCost * ($percentages['bathrooms'] ?? 20) / 100);
+        $breakdown['flooring'] = (int) ($totalCost * ($percentages['flooring'] ?? 12) / 100);
+        $breakdown['paint'] = (int) ($totalCost * ($percentages['paint'] ?? 8) / 100);
+        $breakdown['electrical'] = (int) ($totalCost * ($percentages['electrical'] ?? 10) / 100);
+        $breakdown['plumbing'] = (int) ($totalCost * ($percentages['plumbing'] ?? 10) / 100);
+        $breakdown['hvac'] = (int) ($totalCost * ($percentages['hvac'] ?? 8) / 100);
+
+        // Conditional categories (only if condition indicates need)
+        $condition = $property->condition ?? 'fair';
+        if (in_array($condition, ['poor', 'needs_repair'])) {
+            $breakdown['roof'] = (int) ($totalCost * 10 / 100);
+            $breakdown['windows'] = (int) ($totalCost * 5 / 100);
+        } else {
+            $breakdown['roof'] = 0;
+            $breakdown['windows'] = 0;
+        }
+
+        $breakdown['other'] = (int) ($totalCost * ($percentages['other'] ?? 7) / 100);
+
+        // Adjust to match total (handle rounding)
+        $currentTotal = array_sum($breakdown);
+        if ($currentTotal !== $totalCost) {
+            $difference = $totalCost - $currentTotal;
+            $breakdown['other'] += (int) $difference;
+        }
+
+        return $breakdown;
+    }
+
+    /**
+     * Estimate timeline in weeks
+     */
+    protected function estimateTimeline(Property $property, float $totalCost): int
+    {
+        $sqft = $property->square_feet ?? 1500;
+        $condition = $property->condition ?? 'fair';
+
+        // Base timeline: 1 week per $10,000 of work, minimum 4 weeks
+        $baseWeeks = max(4, (int) ($totalCost / 10000));
+
+        // Adjust for property size
+        if ($sqft > 3000) {
+            $baseWeeks += 2;
+        } elseif ($sqft > 2000) {
+            $baseWeeks += 1;
+        }
+
+        // Adjust for condition
+        if (in_array($condition, ['poor', 'needs_repair'])) {
+            $baseWeeks += 2;
+        }
+
+        return min($baseWeeks, 16); // Cap at 16 weeks
+    }
+
+    /**
+     * Generate risk factors based on property characteristics
+     */
+    protected function generateRiskFactors(Property $property, array $propertyData): array
+    {
+        $risks = [];
+
+        $yearBuilt = $property->year_built ?? 2000;
+        $currentYear = (int) date('Y');
+        $age = $currentYear - $yearBuilt;
+
+        if ($age > 50) {
+            $risks[] = "Older property (built {$yearBuilt}) may require structural or system updates";
+        }
+
+        $condition = $property->condition ?? 'fair';
+        if (in_array($condition, ['poor', 'needs_repair'])) {
+            $risks[] = "Property condition is {$condition} - may require extensive repairs";
+        }
+
+        $imageCount = $propertyData['image_count'] ?? 0;
+        if ($imageCount < 3) {
+            $risks[] = "Limited property documentation - estimate may not account for hidden issues";
+        }
+
+        if (empty($property->square_feet) || empty($property->bedrooms) || empty($property->bathrooms)) {
+            $risks[] = "Incomplete property data may affect estimate accuracy";
+        }
+
+        return $risks;
+    }
+
+    /**
+     * Generate notes for calculation-based estimate
+     */
+    protected function generateCalculationNotes(Property $property, float $totalCost, array $breakdown): string
+    {
+        $notes = "This estimate is based on formula calculations using property characteristics. ";
+        $notes .= "Total estimated cost: $" . number_format($totalCost, 2) . ". ";
+        
+        $notes .= "Breakdown includes: ";
+        $categories = [];
+        foreach ($breakdown as $category => $amount) {
+            if ($amount > 0) {
+                $categories[] = ucfirst($category) . " ($" . number_format($amount) . ")";
+            }
+        }
+        $notes .= implode(", ", $categories) . ". ";
+        
+        $notes .= "This is a formula-based estimate and should be verified with on-site inspection and contractor quotes.";
+
+        return $notes;
+    }
+
+    /**
+     * Calculate confidence level based on available data
+     */
+    protected function calculateConfidence(array $propertyData): string
+    {
+        $imageCount = $propertyData['image_count'] ?? 0;
+        $hasCompleteData = !empty($propertyData['property']['square_feet']) 
+            && !empty($propertyData['property']['bedrooms']) 
+            && !empty($propertyData['property']['bathrooms']);
+
+        if ($hasCompleteData && $imageCount >= 5) {
+            return 'medium';
+        } elseif ($hasCompleteData) {
+            return 'medium';
+        } else {
+            return 'low';
+        }
     }
 }
 

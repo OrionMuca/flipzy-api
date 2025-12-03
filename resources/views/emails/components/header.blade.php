@@ -7,8 +7,8 @@
                         <img src="{{ $logoUrl }}" alt="{{ $appName }}" style="max-width: 140px; width: auto; height: auto; display: block; margin: 0 auto;">
                     @else
                         <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2;">
-                            {{ $appName }}
-                        </h1>
+                                {{ $appName }}
+                            </h1>
                     @endif
                 </td>
             </tr>

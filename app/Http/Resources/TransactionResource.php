@@ -25,7 +25,7 @@ class TransactionResource extends JsonResource
             'description' => $this->description,
             'metadata' => $this->metadata ?? [],
             'failure_reason' => $this->failure_reason,
-            'processed_at' => $this->processed_at?->toISOString(),
+            'processed_at' => $this->processed_at?->toDateTimeString(),
             'is_completed' => $this->isCompleted(),
             'is_refunded' => $this->isRefunded(),
             'is_failed' => $this->isFailed(),
@@ -40,8 +40,8 @@ class TransactionResource extends JsonResource
             'stripe_refund_id' => $this->when($request->user()?->hasRole('admin') || $request->user()?->id === $this->user_id, $this->stripe_refund_id),
             'stripe_customer_id' => $this->when($request->user()?->hasRole('admin') || $request->user()?->id === $this->user_id, $this->stripe_customer_id),
             'stripe_response' => $this->when($request->user()?->hasRole('admin'), $this->stripe_response),
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'created_at' => $this->created_at?->toDateTimeString(),
+            'updated_at' => $this->updated_at?->toDateTimeString(),
         ];
     }
 }

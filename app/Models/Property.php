@@ -157,6 +157,63 @@ class Property extends Model
         return $query->where('is_verified', true);
     }
 
+    /**
+     * Scope: USA-only properties
+     */
+    public function scopeUsaOnly($query)
+    {
+        return $query->where('country', 'US');
+    }
+
+    /**
+     * Check if property is in USA
+     */
+    public function isUsa(): bool
+    {
+        return $this->country === 'US';
+    }
+
+    /**
+     * Validate US state code
+     */
+    public static function isValidUsState(string $state): bool
+    {
+        $validStates = [
+            'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+            'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+            'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+            'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+            'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
+            'DC'
+        ];
+        
+        return in_array(strtoupper($state), $validStates);
+    }
+
+    /**
+     * Validate US ZIP code format
+     */
+    public static function isValidUsZip(string $zip): bool
+    {
+        // US ZIP: 5 digits or 5+4 format (12345 or 12345-6789)
+        return (bool) preg_match('/^\d{5}(-\d{4})?$/', $zip);
+    }
+
+    /**
+     * Boot the model
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Set default country to US if not provided
+        static::creating(function ($property) {
+            if (empty($property->country)) {
+                $property->country = 'US';
+            }
+        });
+    }
+
 
     /**
      * Check if property has been enriched with ATTOM data

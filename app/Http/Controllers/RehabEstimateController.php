@@ -47,6 +47,12 @@ class RehabEstimateController extends Controller
                 description: "OpenAI model to use",
                 schema: new OA\Schema(type: "string", enum: ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4o"], default: "gpt-3.5-turbo")
             ),
+            new OA\Parameter(
+                name: "use_calculations",
+                in: "query",
+                description: "Force calculation-based estimate instead of AI (useful when OpenAI API key is not available)",
+                schema: new OA\Schema(type: "boolean", default: false)
+            ),
         ],
         responses: [
             new OA\Response(response: 201, description: "Estimate generated successfully"),
@@ -96,6 +102,7 @@ class RehabEstimateController extends Controller
             $options = [
                 'model' => $request->input('model', config('services.openai.model', 'gpt-3.5-turbo')),
                 'force_refresh' => $request->boolean('force_refresh', false),
+                'use_calculations' => $request->boolean('use_calculations', false),
             ];
 
             $estimate = $this->rehabEstimateService->generateEstimate(

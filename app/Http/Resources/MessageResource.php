@@ -27,9 +27,9 @@ class MessageResource extends JsonResource
             ),
             'body' => $this->body,
             'is_read' => $this->is_read,
-            'read_at' => $this->read_at?->toISOString(),
-            'created_at' => $this->created_at->toISOString(),
-            'updated_at' => $this->updated_at->toISOString(),
+            'read_at' => $this->read_at?->toDateTimeString(),
+            'created_at' => $this->created_at->toDateTimeString(),
+            'updated_at' => $this->updated_at->toDateTimeString(),
         ];
     }
 }

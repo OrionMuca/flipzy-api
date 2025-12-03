@@ -178,9 +178,23 @@ class PropertySeeder extends Seeder
         $wholesalerIndex = 0;
         $createdCount = 0;
 
-        // Create real properties
+        // Create real properties (USA-only)
         foreach ($this->realProperties as $propertyData) {
             $wholesaler = $wholesalers[$wholesalerIndex % $wholesalers->count()];
+            
+            // Validate USA address
+            $state = strtoupper($propertyData['state'] ?? '');
+            $zip = $propertyData['zip_code'] ?? '';
+
+            if (!Property::isValidUsState($state)) {
+                $this->command->warn("Skipping property with invalid US state: {$state}");
+                continue;
+            }
+
+            if (!empty($zip) && !Property::isValidUsZip($zip)) {
+                $this->command->warn("Skipping property with invalid US ZIP: {$zip}");
+                continue;
+            }
             
             // Calculate ARV and repair estimate
             $askingPrice = $propertyData['asking_price'];
@@ -196,9 +210,9 @@ class PropertySeeder extends Seeder
                 'status' => 'active',
                 'address' => $propertyData['address'],
                 'city' => $propertyData['city'],
-                'state' => $propertyData['state'],
-                'zip_code' => $propertyData['zip_code'],
-                'country' => 'US',
+                'state' => $state,
+                'zip_code' => $zip,
+                'country' => 'US', // Enforce USA-only
                 'latitude' => null, // Will be filled by geocoding
                 'longitude' => null, // Will be filled by geocoding
                 'bedrooms' => $propertyData['bedrooms'],

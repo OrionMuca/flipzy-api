@@ -120,9 +120,9 @@ class AttomService
                         Log::warning("ATTOM API temporary error, retrying in {$delay}s", [
                             'endpoint' => $endpoint,
                             'attempt' => $attempt,
-                            'http_status' => $httpStatusCode,
-                            'status_code' => $statusCode,
-                        ]);
+                        'http_status' => $httpStatusCode,
+                        'status_code' => $statusCode,
+                    ]);
                         sleep($delay);
                         continue;
                     }
@@ -181,8 +181,8 @@ class AttomService
                 ]);
 
                 if ($attempt >= $maxAttempts) {
-                    return null;
-                }
+                return null;
+            }
             }
         }
 
@@ -333,16 +333,16 @@ class AttomService
 
         $data = $this->makeRequest(
             '/propertyapi/v1.0.0/property/detail',
-            'GET',
-            $params,
+                    'GET',
+                    $params,
             $cacheKey,
             $forceFresh,
             $property
         );
 
         if (!$data) {
-            return null;
-        }
+                return null;
+            }
 
         return $this->extractPropertyData($data);
     }
