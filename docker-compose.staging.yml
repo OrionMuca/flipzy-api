@@ -1,0 +1,93 @@
+version: '3.8'
+
+# Staging Docker Compose
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flipzy-backend-staging
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+    environment:
+      - APP_ENV=staging
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - APP_URL=${APP_URL:-http://localhost:8000}
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-flipzy_staging}
+      - DB_USERNAME=${DB_USERNAME:-flipzy}
+      - DB_PASSWORD=${DB_PASSWORD:-flipzy_password}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - RUN_MIGRATIONS=true
+      - SEED_DATABASE=${SEED_DATABASE:-true}
+      - GENERATE_SWAGGER=true
+    ports:
+      - "${APP_PORT:-8000}:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - flipzy-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: flipzy-mysql-staging
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=${DB_DATABASE:-flipzy_staging}
+      - MYSQL_USER=${DB_USERNAME:-flipzy}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-flipzy_password}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-root_password}
+    volumes:
+      - mysql_staging_data:/var/lib/mysql
+      - ./docker/backups:/backups
+      - ./docker/mysql/conf.d:/etc/mysql/conf.d
+    ports:
+      - "${DB_PORT:-3307}:3306"
+    networks:
+      - flipzy-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: --default-authentication-plugin=mysql_native_password --max_allowed_packet=256M
+
+  redis:
+    image: redis:7-alpine
+    container_name: flipzy-redis-staging
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_staging_data:/data
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    networks:
+      - flipzy-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_staging_data:
+    driver: local
+  redis_staging_data:
+    driver: local
+
+networks:
+  flipzy-network:
+    driver: bridge
+

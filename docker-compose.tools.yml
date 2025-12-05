@@ -1,0 +1,83 @@
+version: '3.8'
+
+# Additional tools for database management and monitoring
+# Usage: docker compose --profile tools up -d
+
+services:
+  # phpMyAdmin - Web-based MySQL administration
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: flipzy-phpmyadmin
+    restart: unless-stopped
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - PMA_USER=${DB_USERNAME:-flipzy}
+      - PMA_PASSWORD=${DB_PASSWORD:-flipzy_password}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-root_password}
+      - UPLOAD_LIMIT=300M
+      - MAX_EXECUTION_TIME=600
+    ports:
+      - "${PHPMYADMIN_PORT:-8080}:80"
+    depends_on:
+      - mysql
+    networks:
+      - flipzy-network
+    profiles:
+      - tools
+
+  # Adminer - Lightweight database management (alternative to phpMyAdmin)
+  adminer:
+    image: adminer:latest
+    container_name: flipzy-adminer
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT:-8082}:8080"
+    environment:
+      - ADMINER_DEFAULT_SERVER=mysql
+    depends_on:
+      - mysql
+    networks:
+      - flipzy-network
+    profiles:
+      - tools
+
+  # Redis Commander - Redis management UI
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: flipzy-redis-commander
+    restart: unless-stopped
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "${REDIS_COMMANDER_PORT:-8081}:8081"
+    depends_on:
+      - redis
+    networks:
+      - flipzy-network
+    profiles:
+      - tools
+
+  # Portainer - Docker container management UI
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: flipzy-portainer
+    restart: unless-stopped
+    ports:
+      - "${PORTAINER_PORT:-9000}:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - flipzy-network
+    profiles:
+      - tools
+
+volumes:
+  portainer_data:
+    driver: local
+
+networks:
+  flipzy-network:
+    external: true
+

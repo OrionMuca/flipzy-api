@@ -1,0 +1,76 @@
+version: '3.8'
+
+# Development Docker Compose (with hot reload and dev tools)
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: flipzy-backend-dev
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8000
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=flipzy_dev
+      - DB_USERNAME=flipzy
+      - DB_PASSWORD=flipzy_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+    ports:
+      - "8000:80"
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - flipzy-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: flipzy-mysql-dev
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=flipzy_dev
+      - MYSQL_USER=flipzy
+      - MYSQL_PASSWORD=flipzy_password
+      - MYSQL_ROOT_PASSWORD=root_password
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - flipzy-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: flipzy-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - flipzy-network
+
+volumes:
+  mysql_dev_data:
+    driver: local
+
+networks:
+  flipzy-network:
+    driver: bridge
+

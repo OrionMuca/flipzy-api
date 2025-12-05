@@ -1,3 +1,30 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile
+Dockerfile.dev
+docker-compose.yml
+docker-compose.dev.yml
+.dockerignore
+
+# Documentation
+*.md
+!README.md
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
 # Laravel
 /node_modules
 /public/hot
@@ -12,23 +39,6 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
-
-# Docker
-docker/mysql/data/*
-!docker/mysql/data/.gitkeep
-docker/backups/*
-!docker/backups/.gitkeep
-
-# IDE
-.idea
-.vscode
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
 
 # Testing
 /tests
@@ -50,3 +60,4 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+

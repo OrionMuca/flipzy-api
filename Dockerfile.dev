@@ -1,0 +1,61 @@
+# Development Dockerfile for Laravel
+FROM php:8.3-fpm-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    git \
+    curl \
+    libpng-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    oniguruma-dev \
+    mariadb-dev \
+    nginx \
+    supervisor \
+    $PHPIZE_DEPS
+
+# Install PHP extensions
+RUN docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    zip
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Install Node.js and npm (for asset compilation if needed)
+RUN apk add --no-cache nodejs npm
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy nginx configuration
+COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
+
+# Create supervisor log directory
+RUN mkdir -p /var/log/supervisor
+
+# Copy supervisor configuration
+COPY docker/supervisor/supervisord.conf /etc/supervisord.conf
+COPY docker/supervisor/laravel-worker.conf /etc/supervisor/conf.d/laravel-worker.conf
+COPY docker/supervisor/laravel-horizon.conf /etc/supervisor/conf.d/laravel-horizon.conf
+
+# Copy startup script
+COPY docker/start-dev.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html
+
+# Expose port
+EXPOSE 80
+
+# Start supervisor
+CMD ["/usr/local/bin/start.sh"]
+
