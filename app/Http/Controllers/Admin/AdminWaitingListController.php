@@ -39,11 +39,15 @@ class AdminWaitingListController extends Controller
             }
         }
 
-        // Search by email
+        // Search by email, name, phone_number, or company_name
         if ($request->has('search')) {
             $search = $request->get('search');
-            $query->where('email', 'like', "%{$search}%")
-                  ->orWhere('name', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('email', 'like', "%{$search}%")
+                  ->orWhere('name', 'like', "%{$search}%")
+                  ->orWhere('phone_number', 'like', "%{$search}%")
+                  ->orWhere('company_name', 'like', "%{$search}%");
+            });
         }
 
         // Sort
@@ -90,6 +94,9 @@ class AdminWaitingListController extends Controller
                                 new OA\Property(property: "id", type: "string", format: "uuid"),
                                 new OA\Property(property: "email", type: "string", format: "email"),
                                 new OA\Property(property: "name", type: "string"),
+                                new OA\Property(property: "phone_number", type: "string", nullable: true),
+                                new OA\Property(property: "company_name", type: "string", nullable: true),
+                                new OA\Property(property: "selected_roles", type: "array", nullable: true, items: new OA\Items(type: "string", enum: ["wholesaler", "investor"])),
                                 new OA\Property(property: "status", type: "string", enum: ["pending", "account_created", "cancelled"]),
                                 new OA\Property(property: "coupon_code", type: "string", nullable: true),
                                 new OA\Property(property: "email_verified", type: "boolean"),
@@ -140,6 +147,18 @@ class AdminWaitingListController extends Controller
         // Count entries with coupons
         $withCoupons = WaitingListEntry::whereNotNull('coupon_id')->count();
 
+        // Count by roles
+        $wholesalers = WaitingListEntry::whereNotNull('selected_roles')
+            ->whereJsonContains('selected_roles', 'wholesaler')
+            ->count();
+        $investors = WaitingListEntry::whereNotNull('selected_roles')
+            ->whereJsonContains('selected_roles', 'investor')
+            ->count();
+        $bothRoles = WaitingListEntry::whereNotNull('selected_roles')
+            ->whereJsonContains('selected_roles', 'wholesaler')
+            ->whereJsonContains('selected_roles', 'investor')
+            ->count();
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -150,6 +169,11 @@ class AdminWaitingListController extends Controller
                     'cancelled' => $cancelled,
                 ],
                 'with_coupons' => $withCoupons,
+                'by_roles' => [
+                    'wholesaler' => $wholesalers,
+                    'investor' => $investors,
+                    'both' => $bothRoles,
+                ],
             ],
         ]);
     }

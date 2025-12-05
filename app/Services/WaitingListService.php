@@ -79,10 +79,25 @@ class WaitingListService
                 }
             }
 
+            // Normalize selected_roles array
+            $selectedRoles = [];
+            if (!empty($data['selected_roles']) && is_array($data['selected_roles'])) {
+                // Filter valid roles and remove duplicates
+                $validRoles = ['wholesaler', 'investor'];
+                $selectedRoles = array_values(array_unique(
+                    array_filter($data['selected_roles'], function($role) use ($validRoles) {
+                        return in_array($role, $validRoles);
+                    })
+                ));
+            }
+
             // Create waiting list entry
             $entry = WaitingListEntry::create([
                 'email' => $data['email'],
                 'name' => $data['name'],
+                'phone_number' => $data['phone_number'],
+                'company_name' => $data['company_name'] ?? null,
+                'selected_roles' => !empty($selectedRoles) ? $selectedRoles : null,
                 'coupon_id' => $coupon?->id,
                 'coupon_code' => $data['coupon_code'] ?? null,
                 'status' => 'pending',

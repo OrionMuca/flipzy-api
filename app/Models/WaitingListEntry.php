@@ -16,6 +16,9 @@ class WaitingListEntry extends Model
     protected $fillable = [
         'email',
         'name',
+        'phone_number',
+        'company_name',
+        'selected_roles',
         'subscription_plan_id', // Nullable, kept for backward compatibility
         'coupon_id',
         'coupon_code',
@@ -30,6 +33,7 @@ class WaitingListEntry extends Model
         'email_verified_at' => 'datetime',
         'account_created_at' => 'datetime',
         'metadata' => 'array',
+        'selected_roles' => 'array',
     ];
 
     /**

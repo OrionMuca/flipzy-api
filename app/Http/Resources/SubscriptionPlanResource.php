@@ -28,8 +28,8 @@ class SubscriptionPlanResource extends JsonResource
             'has_api_access' => $this->has_api_access,
             'is_active' => $this->is_active,
             'stripe_price_id' => $this->when($request->user()?->hasRole('admin'), $this->stripe_price_id),
-            'created_at' => $this->created_at?->toDateTimeString(),
-            'updated_at' => $this->updated_at?->toDateTimeString(),
+            'created_at' => $this->created_at?->format('m-d-Y H:i:s'),
+            'updated_at' => $this->updated_at?->format('m-d-Y H:i:s'),
         ];
     }
 }

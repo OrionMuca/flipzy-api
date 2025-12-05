@@ -91,15 +91,40 @@ class CreateAccountsFromWaitingList extends Command
                 if ($dryRun) {
                     $this->line("Would create user: {$entry->email}");
                     $this->line("  Name: {$entry->name}");
+                    $this->line("  Phone: {$entry->phone_number}");
+                    $companyName = $entry->company_name ?? 'N/A';
+                    $this->line("  Company: {$companyName}");
+                    $roles = !empty($entry->selected_roles) ? implode(', ', $entry->selected_roles) : 'None';
+                    $this->line("  Roles: {$roles}");
                     $this->line("  Temp Password: {$tempPassword}");
                 } else {
                     // Create user account
                     $user = User::create([
                         'name' => $entry->name,
                         'email' => $entry->email,
+                        'phone_number' => $entry->phone_number,
+                        'company_name' => $entry->company_name,
                         'password' => Hash::make($tempPassword),
                         'email_verified_at' => now(),
                     ]);
+
+                    // Assign roles from selected_roles array
+                    if (!empty($entry->selected_roles) && is_array($entry->selected_roles)) {
+                        foreach ($entry->selected_roles as $role) {
+                            if (in_array($role, ['wholesaler', 'investor'])) {
+                                try {
+                                    $user->assignRole($role);
+                                } catch (\Exception $e) {
+                                    Log::warning('Failed to assign role to user', [
+                                        'user_id' => $user->id,
+                                        'role' => $role,
+                                        'error' => $e->getMessage(),
+                                    ]);
+                                    // Continue even if role assignment fails
+                                }
+                            }
+                        }
+                    }
 
                     // Generate password reset token
                     $token = Password::createToken($user);

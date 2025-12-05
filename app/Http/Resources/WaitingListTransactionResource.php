@@ -28,15 +28,15 @@ class WaitingListTransactionResource extends JsonResource
             'is_completed' => $this->isCompleted(),
             'is_refunded' => $this->isRefunded(),
             'is_failed' => $this->isFailed(),
-            'processed_at' => $this->processed_at?->toDateTimeString(),
+            'processed_at' => $this->processed_at?->format('m-d-Y H:i:s'),
             'waiting_list_entry' => $this->whenLoaded('waitingListEntry', function () {
                 return new WaitingListEntryResource($this->waitingListEntry);
             }),
             'stripe_payment_intent_id' => $this->when($request->user()?->hasRole('admin'), $this->stripe_payment_intent_id),
             'stripe_charge_id' => $this->when($request->user()?->hasRole('admin'), $this->stripe_charge_id),
             'stripe_refund_id' => $this->when($request->user()?->hasRole('admin'), $this->stripe_refund_id),
-            'created_at' => $this->created_at?->toDateTimeString(),
-            'updated_at' => $this->updated_at?->toDateTimeString(),
+            'created_at' => $this->created_at?->format('m-d-Y H:i:s'),
+            'updated_at' => $this->updated_at?->format('m-d-Y H:i:s'),
         ];
     }
 }

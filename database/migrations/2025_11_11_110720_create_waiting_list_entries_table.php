@@ -15,6 +15,9 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('email')->unique();
             $table->string('name');
+            $table->string('phone_number')->nullable();
+            $table->string('company_name')->nullable();
+            $table->json('selected_roles')->nullable();
             $table->uuid('subscription_plan_id')->nullable(); // Made nullable, no foreign key constraint
             $table->uuid('coupon_id')->nullable();
             $table->string('coupon_code')->nullable(); // Store the code used for reference
@@ -28,9 +31,7 @@ return new class extends Migration
             $table->index('email');
             $table->index('status');
             $table->index('verification_token');
-            
-            // Add foreign key for coupon_id (consolidated from separate migration)
-            $table->foreign('coupon_id')->references('id')->on('coupons')->onDelete('set null');
+            // Foreign key for coupon_id will be added in a separate migration after coupons table is created
         });
     }
 

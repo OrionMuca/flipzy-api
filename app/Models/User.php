@@ -24,6 +24,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'phone_number',
+        'company_name',
         'stripe_customer_id',
     ];
 

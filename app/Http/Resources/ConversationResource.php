@@ -39,9 +39,9 @@ class ConversationResource extends JsonResource
                 fn() => new MessageResource($this->messages->first())
             ),
             'unread_count' => $unreadCount ?? 0,
-            'last_message_at' => $this->last_message_at?->toDateTimeString(),
-            'created_at' => $this->created_at->toDateTimeString(),
-            'updated_at' => $this->updated_at->toDateTimeString(),
+            'last_message_at' => $this->last_message_at?->format('m-d-Y H:i:s'),
+            'created_at' => $this->created_at->format('m-d-Y H:i:s'),
+            'updated_at' => $this->updated_at->format('m-d-Y H:i:s'),
         ];
     }
 }

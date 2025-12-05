@@ -18,9 +18,9 @@ class SubscriptionResource extends JsonResource
             'id' => $this->id,
             'user_id' => $this->user_id,
             'status' => $this->status,
-            'starts_at' => $this->starts_at?->toDateTimeString(),
-            'ends_at' => $this->ends_at?->toDateTimeString(),
-            'cancelled_at' => $this->cancelled_at?->toDateTimeString(),
+            'starts_at' => $this->starts_at?->format('m-d-Y H:i:s'),
+            'ends_at' => $this->ends_at?->format('m-d-Y H:i:s'),
+            'cancelled_at' => $this->cancelled_at?->format('m-d-Y H:i:s'),
             'is_active' => $this->isActive(),
             'plan' => $this->whenLoaded('plan', function () {
                 return new SubscriptionPlanResource($this->plan);
@@ -30,8 +30,8 @@ class SubscriptionResource extends JsonResource
             }),
             'stripe_subscription_id' => $this->when($request->user()?->hasRole('admin') || $request->user()?->id === $this->user_id, $this->stripe_subscription_id),
             'stripe_customer_id' => $this->when($request->user()?->hasRole('admin') || $request->user()?->id === $this->user_id, $this->stripe_customer_id),
-            'created_at' => $this->created_at?->toDateTimeString(),
-            'updated_at' => $this->updated_at?->toDateTimeString(),
+            'created_at' => $this->created_at?->format('m-d-Y H:i:s'),
+            'updated_at' => $this->updated_at?->format('m-d-Y H:i:s'),
         ];
     }
 }

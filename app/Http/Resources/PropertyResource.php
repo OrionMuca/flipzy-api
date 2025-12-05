@@ -73,9 +73,9 @@ class PropertyResource extends JsonResource
             'allow_inquiries' => $this->allow_inquiries,
             
             // Metadata
-            'enriched_at' => $this->enriched_at?->toDateTimeString(),
-            'created_at' => $this->created_at->toDateTimeString(),
-            'updated_at' => $this->updated_at->toDateTimeString(),
+            'enriched_at' => $this->enriched_at?->format('m-d-Y H:i:s'),
+            'created_at' => $this->created_at->format('m-d-Y H:i:s'),
+            'updated_at' => $this->updated_at->format('m-d-Y H:i:s'),
         ];
     }
 }

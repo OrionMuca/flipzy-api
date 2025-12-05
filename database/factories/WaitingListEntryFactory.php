@@ -22,6 +22,9 @@ class WaitingListEntryFactory extends Factory
         return [
             'email' => fake()->unique()->safeEmail(),
             'name' => fake()->name(),
+            'phone_number' => fake()->phoneNumber(),
+            'company_name' => fake()->optional()->company(),
+            'selected_roles' => fake()->optional()->randomElements(['wholesaler', 'investor'], fake()->numberBetween(0, 2)),
             'subscription_plan_id' => null,
             'coupon_id' => null,
             'coupon_code' => null,

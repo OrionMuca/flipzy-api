@@ -163,10 +163,13 @@ class WaitingListController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ["email", "name"],
+                required: ["email", "name", "phone_number"],
                 properties: [
                     new OA\Property(property: "email", type: "string", format: "email", description: "User email"),
                     new OA\Property(property: "name", type: "string", description: "User name"),
+                    new OA\Property(property: "phone_number", type: "string", description: "User phone number"),
+                    new OA\Property(property: "company_name", type: "string", description: "Company name (optional)"),
+                    new OA\Property(property: "selected_roles", type: "array", description: "Selected roles (optional)", items: new OA\Items(type: "string", enum: ["wholesaler", "investor"])),
                     new OA\Property(property: "coupon_code", type: "string", description: "Optional coupon code for future use"),
                 ]
             )
@@ -186,6 +189,9 @@ class WaitingListController extends Controller
                                 new OA\Property(property: "id", type: "string", format: "uuid"),
                                 new OA\Property(property: "email", type: "string", format: "email"),
                                 new OA\Property(property: "name", type: "string"),
+                                new OA\Property(property: "phone_number", type: "string", nullable: true),
+                                new OA\Property(property: "company_name", type: "string", nullable: true),
+                                new OA\Property(property: "selected_roles", type: "array", nullable: true, items: new OA\Items(type: "string", enum: ["wholesaler", "investor"])),
                                 new OA\Property(property: "status", type: "string", enum: ["pending", "account_created", "cancelled"]),
                                 new OA\Property(property: "coupon_code", type: "string", nullable: true),
                                 new OA\Property(property: "email_verified", type: "boolean"),
@@ -228,6 +234,10 @@ class WaitingListController extends Controller
         $validator = Validator::make($request->all(), [
             'email' => 'required|email|max:255',
             'name' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:20',
+            'company_name' => 'nullable|string|max:255',
+            'selected_roles' => 'nullable|array',
+            'selected_roles.*' => 'string|in:wholesaler,investor',
             'coupon_code' => 'sometimes|string|max:50',
         ]);
 
@@ -283,6 +293,9 @@ class WaitingListController extends Controller
                                 new OA\Property(property: "id", type: "string", format: "uuid"),
                                 new OA\Property(property: "email", type: "string", format: "email"),
                                 new OA\Property(property: "name", type: "string"),
+                                new OA\Property(property: "phone_number", type: "string", nullable: true),
+                                new OA\Property(property: "company_name", type: "string", nullable: true),
+                                new OA\Property(property: "selected_roles", type: "array", nullable: true, items: new OA\Items(type: "string", enum: ["wholesaler", "investor"])),
                                 new OA\Property(property: "status", type: "string", enum: ["pending", "account_created", "cancelled"]),
                                 new OA\Property(property: "coupon_code", type: "string", nullable: true),
                                 new OA\Property(property: "email_verified", type: "boolean"),
@@ -379,6 +392,9 @@ class WaitingListController extends Controller
                                 new OA\Property(property: "id", type: "string", format: "uuid"),
                                 new OA\Property(property: "email", type: "string", format: "email"),
                                 new OA\Property(property: "name", type: "string"),
+                                new OA\Property(property: "phone_number", type: "string", nullable: true),
+                                new OA\Property(property: "company_name", type: "string", nullable: true),
+                                new OA\Property(property: "selected_roles", type: "array", nullable: true, items: new OA\Items(type: "string", enum: ["wholesaler", "investor"])),
                                 new OA\Property(property: "status", type: "string", enum: ["pending", "account_created", "cancelled"]),
                                 new OA\Property(property: "email_verified", type: "boolean", example: true),
                                 new OA\Property(property: "email_verified_at", type: "string", format: "date-time"),

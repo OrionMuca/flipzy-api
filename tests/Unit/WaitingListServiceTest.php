@@ -37,6 +37,7 @@ class WaitingListServiceTest extends TestCase
         $result = $this->waitingListService->register([
             'email' => 'test@example.com',
             'name' => 'Test User',
+            'phone_number' => '+1234567890',
         ]);
 
         $this->assertTrue($result['success']);
@@ -62,6 +63,7 @@ class WaitingListServiceTest extends TestCase
         $result = $this->waitingListService->register([
             'email' => 'test@example.com',
             'name' => 'Test User',
+            'phone_number' => '+1234567890',
             'coupon_code' => 'TEST50',
         ]);
 
@@ -82,6 +84,7 @@ class WaitingListServiceTest extends TestCase
         $result = $this->waitingListService->register([
             'email' => 'test@example.com',
             'name' => 'Test User',
+            'phone_number' => '+1234567890',
         ]);
 
         $this->assertFalse($result['success']);
@@ -94,6 +97,7 @@ class WaitingListServiceTest extends TestCase
         $result = $this->waitingListService->register([
             'email' => 'test@example.com',
             'name' => 'Test User',
+            'phone_number' => '+1234567890',
             'coupon_code' => 'INVALID',
         ]);
 

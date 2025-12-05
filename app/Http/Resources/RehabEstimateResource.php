@@ -53,8 +53,8 @@ class RehabEstimateResource extends JsonResource
             'confidence' => $parsedResponse['confidence'] ?? 'medium',
             'model_used' => $this->model_used,
             'tokens_used' => $this->tokens_used,
-            'created_at' => $this->created_at->toDateTimeString(),
-            'updated_at' => $this->updated_at->toDateTimeString(),
+            'created_at' => $this->created_at->format('m-d-Y H:i:s'),
+            'updated_at' => $this->updated_at->format('m-d-Y H:i:s'),
         ];
     }
 }

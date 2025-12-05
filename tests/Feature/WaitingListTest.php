@@ -117,9 +117,10 @@ class WaitingListTest extends TestCase
         $response = $this->postJson('/api/v1/waiting-list/register', [
             'email' => 'test@example.com',
             'name' => 'Test User',
+            'phone_number' => '+1234567890',
         ]);
 
-        $response->assertStatus(200)
+        $response->assertStatus(201)
             ->assertJsonStructure([
                 'success',
                 'message',
@@ -159,10 +160,11 @@ class WaitingListTest extends TestCase
         $response = $this->postJson('/api/v1/waiting-list/register', [
             'email' => 'test@example.com',
             'name' => 'Test User',
+            'phone_number' => '+1234567890',
             'coupon_code' => 'EARLYBIRD50',
         ]);
 
-        $response->assertStatus(200);
+        $response->assertStatus(201);
 
         $entry = WaitingListEntry::where('email', 'test@example.com')->first();
         $this->assertNotNull($entry->coupon_id);
@@ -179,6 +181,7 @@ class WaitingListTest extends TestCase
         $response = $this->postJson('/api/v1/waiting-list/register', [
             'email' => 'test@example.com',
             'name' => 'Test User',
+            'phone_number' => '+1234567890',
         ]);
 
         $response->assertStatus(400)
@@ -243,7 +246,7 @@ class WaitingListTest extends TestCase
         $response = $this->postJson('/api/v1/waiting-list/register', []);
 
         $response->assertStatus(400)
-            ->assertJsonValidationErrors(['email', 'name']);
+            ->assertJsonValidationErrors(['email', 'name', 'phone_number']);
     }
 
     /** @test */
