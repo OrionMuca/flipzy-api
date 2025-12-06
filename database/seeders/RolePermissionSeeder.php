@@ -41,6 +41,7 @@ class RolePermissionSeeder extends Seeder
             'admin.users.manage',
             'admin.properties.manage',
             'admin.subscriptions.manage',
+            'admin.notifications.send',
         ];
 
         $permissionModels = [];
@@ -76,6 +77,14 @@ class RolePermissionSeeder extends Seeder
 
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $admin->syncPermissions(Permission::all());
+
+        // Clear cache after assigning permissions
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        $this->command->info('✅ Roles and permissions seeded successfully!');
+        $this->command->line('   Created ' . count($permissions) . ' permissions');
+        $this->command->line('   Created 3 roles: admin, wholesaler, investor');
+        $this->command->line('   Admin role has all permissions');
     }
 }
 

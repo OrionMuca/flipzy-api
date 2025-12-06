@@ -381,6 +381,31 @@ php artisan db:seed
 php artisan db:seed --class=UserSeeder
 ```
 
+#### Test Users (Created by UserSeeder)
+
+After running `php artisan db:seed`, the following test users are available:
+
+**Admin User:**
+- Email: `admin@flipzy.com`
+- Password: `password`
+- Role: `admin`
+- Email Verified: ✅ Yes
+
+**Wholesaler Users:**
+- Email: `wholesaler@flipzy.com` | Password: `password`
+- Email: `sarah@flipzy.com` | Password: `password`
+- Role: `wholesaler`
+- Email Verified: ✅ Yes
+
+**Investor Users:**
+- Email: `investor@flipzy.com` | Password: `password`
+- Email: `emma@flipzy.com` | Password: `password`
+- Email: `david@flipzy.com` | Password: `password`
+- Role: `investor`
+- Email Verified: ✅ Yes
+
+> **⚠️ Security Note:** These are development/test credentials. Change all passwords before deploying to production!
+
 ---
 
 ## 📝 Key Features Details

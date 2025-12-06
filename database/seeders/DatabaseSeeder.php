@@ -15,15 +15,20 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->command->info('🚀 Starting database seeding...');
+        $this->command->newLine();
+
         // Seed roles and permissions first
         $this->call([
             RolePermissionSeeder::class,
         ]);
+        $this->command->newLine();
 
         // Seed subscription plans
         $this->call([
             SubscriptionPlanSeeder::class,
         ]);
+        $this->command->newLine();
 
         // Seed users with roles
         $this->call([
@@ -34,5 +39,14 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PropertySeeder::class,
         ]);
+
+        $this->command->newLine();
+        $this->command->info('🎉 Database seeding completed successfully!');
+        $this->command->newLine();
+        $this->command->comment('📝 Quick Login Reference:');
+        $this->command->line('   Admin:     admin@flipzy.com / password');
+        $this->command->line('   Wholesaler: wholesaler@flipzy.com / password');
+        $this->command->line('   Investor:   investor@flipzy.com / password');
+        $this->command->newLine();
     }
 }
