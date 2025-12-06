@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\WaitingListEntry;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class WaitingListUpdateMail extends Mailable implements ShouldQueue
+class AdminNotificationMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -32,8 +32,11 @@ class WaitingListUpdateMail extends Mailable implements ShouldQueue
      * Create a new message instance.
      */
     public function __construct(
-        public WaitingListEntry $entry,
-        public string $updateContent
+        public User $user,
+        public string $subject,
+        public string $message,
+        public ?string $actionUrl = null,
+        public ?string $actionText = null
     ) {}
 
     /**
@@ -42,7 +45,7 @@ class WaitingListUpdateMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Update on ' . config('app.name') . ' Launch Progress',
+            subject: $this->subject,
         );
     }
 
@@ -52,21 +55,26 @@ class WaitingListUpdateMail extends Mailable implements ShouldQueue
     public function content(): Content
     {
         return new Content(
-            view: 'emails.waiting-list.update',
+            view: 'emails.admin.notification',
             with: [
-                'entry' => $this->entry,
-                'updateContent' => $this->updateContent,
-                'greeting' => 'Hi ' . $this->entry->name . ',',
-                'recipientEmail' => $this->entry->email,
-                'buttonColor' => '#2563eb',
+                'subject' => $this->subject,
+                'message' => $this->message,
+                'actionUrl' => $this->actionUrl,
+                'actionText' => $this->actionText,
+                'user' => $this->user,
+                'greeting' => 'Hello ' . $this->user->name . ',',
+                'recipientEmail' => $this->user->email,
                 'logoUrl' => url('flipzy_logo.jpg'),
                 'headerColor' => '#2563eb',
+                'buttonColor' => $this->actionUrl ? '#2563eb' : null,
             ],
         );
     }
 
     /**
      * Get the queue connection to use for this mailable.
+     *
+     * @return string
      */
     public function viaConnection(): string
     {
@@ -75,9 +83,12 @@ class WaitingListUpdateMail extends Mailable implements ShouldQueue
 
     /**
      * Get the queue name to use for this mailable.
+     *
+     * @return string
      */
     public function viaQueue(): string
     {
-        return 'emails-waiting-list';
+        return 'emails-admin';
     }
 }
+

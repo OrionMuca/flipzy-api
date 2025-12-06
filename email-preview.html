@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flipzy Email Templates Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f3f4f6;
+            padding: 40px 20px;
+        }
+        .preview-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .preview-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .preview-header h1 {
+            color: #111827;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .preview-header p {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        .email-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        .email-preview {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .email-preview-header {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            padding: 20px;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+        }
+        .email-preview-content {
+            padding: 20px;
+        }
+        .email-frame {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
+            padding: 20px;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .email-header {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            padding: 40px 32px;
+            text-align: center;
+        }
+        .email-header img {
+            max-width: 180px;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .email-header-placeholder {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+        }
+        .email-body {
+            padding: 48px;
+        }
+        .email-greeting {
+            font-size: 26px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 24px;
+        }
+        .email-content {
+            color: #374151;
+            font-size: 16px;
+            line-height: 26px;
+            margin-bottom: 24px;
+        }
+        .email-button {
+            display: inline-block;
+            padding: 18px 40px;
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+            margin: 20px 0;
+        }
+        .info-box {
+            border-radius: 14px;
+            padding: 24px;
+            margin: 28px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .info-box-success {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border: 2px solid #059669;
+        }
+        .info-box-warning {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid #f59e0b;
+        }
+        .info-box-info {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border-left: 4px solid #2563eb;
+        }
+        .info-box-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 10px;
+        }
+        .info-box-success .info-box-title {
+            color: #065f46;
+        }
+        .info-box-warning .info-box-title {
+            color: #92400e;
+        }
+        .info-box-info .info-box-title {
+            color: #1e40af;
+        }
+        .info-box-content {
+            font-size: 15px;
+            line-height: 24px;
+        }
+        .info-box-success .info-box-content {
+            color: #047857;
+        }
+        .info-box-warning .info-box-content {
+            color: #78350f;
+        }
+        .info-box-info .info-box-content {
+            color: #1e40af;
+        }
+        .email-footer {
+            background: linear-gradient(to bottom, #f9fafb 0%, #f3f4f6 100%);
+            border-top: 1px solid #e5e7eb;
+            padding: 40px 48px;
+            text-align: center;
+        }
+        .email-footer p {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .credentials-box {
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            border-radius: 14px;
+            padding: 28px;
+            border: 1px solid #e5e7eb;
+            margin: 28px 0;
+        }
+        .credentials-box h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 24px;
+        }
+        .credential-row {
+            padding: 16px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .credential-label {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #6b7280;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .credential-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+        }
+        .password-value {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            background: #f3f4f6;
+            padding: 14px 20px;
+            border-radius: 8px;
+            display: inline-block;
+            border: 2px solid #2563eb;
+            color: #2563eb;
+        }
+        .link-section {
+            margin-top: 36px;
+            padding-top: 28px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .link-label {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #6b7280;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+        .link-url {
+            font-size: 12px;
+            color: #2563eb;
+            word-break: break-all;
+            text-decoration: none;
+            border-bottom: 1px solid #bfdbfe;
+        }
+        .bottom-note {
+            max-width: 600px;
+            margin: 24px auto 0;
+            padding: 20px 24px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 8px;
+            text-align: center;
+            color: rgba(255,255,255,0.95);
+            font-size: 13px;
+        }
+        .bottom-note p {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-container">
+        <div class="preview-header">
+            <h1>📧 Flipzy Email Templates Preview</h1>
+            <p>Professional email templates with logo integration and modern UI/UX</p>
+        </div>
+
+        <div class="email-grid">
+            <!-- Welcome Email -->
+            <div class="email-preview">
+                <div class="email-preview-header">1. Waiting List Welcome Email</div>
+                <div class="email-preview-content">
+                    <div class="email-frame">
+                        <div class="email-container">
+                            <div class="email-header">
+                                <img src="/flipzy_logo.jpg" alt="Flipzy" style="max-width: 180px; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            </div>
+                            <div class="email-body">
+                                <div class="email-greeting">Hi John Doe,</div>
+                                <div class="email-content">
+                                    Thank you for joining our waiting list! We're <strong>thrilled</strong> to have you on board and excited to share what we're building.
+                                </div>
+                                <div class="info-box info-box-success">
+                                    <div class="info-box-title">Special Offer Applied!</div>
+                                    <div class="info-box-content">
+                                        You've used coupon code <strong style="font-size: 18px;">EARLYBIRD50</strong> for future use!
+                                    </div>
+                                </div>
+                                <div class="info-box info-box-warning">
+                                    <div class="info-box-content">
+                                        <strong>Stay Updated:</strong> We'll notify you as soon as we're ready to launch! Keep an eye on your inbox for exciting updates.
+                                    </div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <a href="#" class="email-button">Verify Email</a>
+                                </div>
+                                <div class="link-section">
+                                    <div class="link-label">Check Your Status</div>
+                                    <div class="link-url">https://yourapp.com/waiting-list/status?email=...</div>
+                                </div>
+                            </div>
+                            <div class="email-footer">
+                                <p>© 2025 <strong style="color: #2563eb;">Flipzy</strong>. All rights reserved.</p>
+                                <p style="margin-top: 16px;">
+                                    <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 12px; border-bottom: 1px solid #d1d5db; padding-bottom: 2px;">Terms & Conditions</a>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="bottom-note" style="background: rgba(255,255,255,0.1);">
+                            <p>This email was sent to <strong>user@example.com</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Created Email -->
+            <div class="email-preview">
+                <div class="email-preview-header">2. Account Created Email</div>
+                <div class="email-preview-content">
+                    <div class="email-frame">
+                        <div class="email-container">
+                            <div class="email-header">
+                                <img src="/flipzy_logo.jpg" alt="Flipzy" style="max-width: 180px; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            </div>
+                            <div class="email-body">
+                                <div class="email-greeting">Hi John Doe,</div>
+                                <div class="email-content">
+                                    <strong>Exciting news!</strong> Your account has been created and you can now access <strong style="color: #2563eb;">Flipzy</strong>.
+                                </div>
+                                <div class="info-box info-box-warning">
+                                    <div class="info-box-title">Important Security Notice</div>
+                                    <div class="info-box-content">
+                                        Please change your password immediately after logging in to secure your account.
+                                    </div>
+                                </div>
+                                <div class="credentials-box">
+                                    <h3>Your Login Credentials</h3>
+                                    <div class="credential-row">
+                                        <div class="credential-label">Email:</div>
+                                        <div class="credential-value">john.doe@example.com</div>
+                                    </div>
+                                    <div class="credential-row" style="border-bottom: none; padding-top: 16px;">
+                                        <div class="credential-label">Temporary Password:</div>
+                                        <div class="password-value">TmpP@ss123!</div>
+                                    </div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <a href="#" class="email-button">Reset Password & Login</a>
+                                </div>
+                                <div class="link-section">
+                                    <div class="link-label">Password Reset Link</div>
+                                    <div class="link-url">https://yourapp.com/reset-password?token=...</div>
+                                </div>
+                            </div>
+                            <div class="email-footer">
+                                <p>© 2025 <strong style="color: #2563eb;">Flipzy</strong>. All rights reserved.</p>
+                                <p style="margin-top: 16px;">
+                                    <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 12px; border-bottom: 1px solid #d1d5db; padding-bottom: 2px;">Terms & Conditions</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Confirmation Email -->
+            <div class="email-preview">
+                <div class="email-preview-header">3. Payment Confirmation Email</div>
+                <div class="email-preview-content">
+                    <div class="email-frame">
+                        <div class="email-container">
+                            <div class="email-header" style="background: linear-gradient(135deg, #059669 0%, #047857 100%);">
+                                <img src="/flipzy_logo.jpg" alt="Flipzy" style="max-width: 180px; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            </div>
+                            <div class="email-body">
+                                <div class="email-greeting">Hi John Doe,</div>
+                                <div class="email-content">
+                                    <strong style="color: #059669;">Great news!</strong> Your payment has been confirmed successfully.
+                                </div>
+                                <div class="credentials-box">
+                                    <h3>Subscription Details</h3>
+                                    <div class="credential-row">
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: #6b7280; font-size: 14px;">Plan:</span>
+                                            <span style="color: #111827; font-weight: 600;">Premium Plan</span>
+                                        </div>
+                                    </div>
+                                    <div class="credential-row">
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: #6b7280; font-size: 14px;">Original Price:</span>
+                                            <span>$99.00</span>
+                                        </div>
+                                    </div>
+                                    <div class="credential-row">
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: #6b7280; font-size: 14px;">Discount (EARLYBIRD50):</span>
+                                            <span style="color: #059669; font-weight: 600;">-$49.50</span>
+                                        </div>
+                                    </div>
+                                    <div style="padding-top: 20px; border-top: 1px solid #e5e7eb; margin-top: 16px;">
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: #111827; font-size: 18px; font-weight: 700;">Amount Paid:</span>
+                                            <span style="color: #059669; font-size: 22px; font-weight: 700;">$49.50</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="info-box info-box-info">
+                                    <div class="info-box-content">
+                                        <strong>Next Steps:</strong> Your account will be activated when we launch. You'll receive an email with your login credentials at that time.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="email-footer">
+                                <p>© 2025 <strong style="color: #2563eb;">Flipzy</strong>. All rights reserved.</p>
+                                <p style="margin-top: 16px;">
+                                    <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 12px; border-bottom: 1px solid #d1d5db; padding-bottom: 2px;">Terms & Conditions</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Email Verification Email -->
+            <div class="email-preview">
+                <div class="email-preview-header">4. Email Verification Email</div>
+                <div class="email-preview-content">
+                    <div class="email-frame">
+                        <div class="email-container">
+                            <div class="email-header">
+                                <img src="/flipzy_logo.jpg" alt="Flipzy" style="max-width: 180px; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            </div>
+                            <div class="email-body">
+                                <div class="email-greeting">Hello John Doe,</div>
+                                <div class="email-content">
+                                    Thank you for registering with <strong style="color: #2563eb;">Flipzy</strong>! We're excited to have you on board.
+                                </div>
+                                <div class="email-content">
+                                    Please verify your email address by clicking the button above. This helps us ensure the security of your account and enables important notifications.
+                                </div>
+                                <div class="info-box info-box-success">
+                                    <div class="info-box-content">
+                                        <strong>Why verify?</strong> Email verification helps protect your account and ensures you receive important updates.
+                                    </div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <a href="#" class="email-button">Verify Email Address</a>
+                                </div>
+                                <div class="link-section">
+                                    <div class="link-label">Having trouble?</div>
+                                    <div class="link-url">https://yourapp.com/verify-email?token=...</div>
+                                </div>
+                            </div>
+                            <div class="email-footer">
+                                <p>© 2025 <strong style="color: #2563eb;">Flipzy</strong>. All rights reserved.</p>
+                                <p style="margin-top: 16px;">
+                                    <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 12px; border-bottom: 1px solid #d1d5db; padding-bottom: 2px;">Terms & Conditions</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Password Reset Email -->
+            <div class="email-preview">
+                <div class="email-preview-header">5. Password Reset Email</div>
+                <div class="email-preview-content">
+                    <div class="email-frame">
+                        <div class="email-container">
+                            <div class="email-header">
+                                <img src="/flipzy_logo.jpg" alt="Flipzy" style="max-width: 180px; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            </div>
+                            <div class="email-body">
+                                <div class="email-greeting">Hello John Doe,</div>
+                                <div class="email-content">
+                                    We received a request to reset your password for your <strong style="color: #2563eb;">Flipzy</strong> account.
+                                </div>
+                                <div class="email-content">
+                                    Click the button above to reset your password. This link will expire in <strong>60 minutes</strong> for your security.
+                                </div>
+                                <div class="info-box info-box-info">
+                                    <div class="info-box-content">
+                                        <strong>Security Tip:</strong> If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+                                    </div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <a href="#" class="email-button">Reset Password</a>
+                                </div>
+                                <div class="link-section">
+                                    <div class="link-label">Having trouble?</div>
+                                    <div class="link-url">https://yourapp.com/reset-password?token=...</div>
+                                </div>
+                            </div>
+                            <div class="email-footer">
+                                <p>© 2025 <strong style="color: #2563eb;">Flipzy</strong>. All rights reserved.</p>
+                                <p style="margin-top: 16px;">
+                                    <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 12px; border-bottom: 1px solid #d1d5db; padding-bottom: 2px;">Terms & Conditions</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Update Email -->
+            <div class="email-preview">
+                <div class="email-preview-header">6. Waiting List Update Email</div>
+                <div class="email-preview-content">
+                    <div class="email-frame">
+                        <div class="email-container">
+                            <div class="email-header">
+                                <img src="/flipzy_logo.jpg" alt="Flipzy" style="max-width: 180px; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            </div>
+                            <div class="email-body">
+                                <div class="email-greeting">Hi John Doe,</div>
+                                <div class="email-content">
+                                    We wanted to give you an update on our launch progress and share some exciting news!
+                                </div>
+                                <div class="info-box info-box-info">
+                                    <div class="info-box-content">
+                                        We're making great progress! Our team has been working hard to bring you the best property management platform. We're currently in the final testing phase and expect to launch within the next few weeks. Stay tuned for more updates!
+                                    </div>
+                                </div>
+                                <div class="info-box info-box-info">
+                                    <div class="info-box-content">
+                                        <strong>Thank You:</strong> We appreciate your patience and support. We're working hard to bring you the best experience possible.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="email-footer">
+                                <p>© 2025 <strong style="color: #2563eb;">Flipzy</strong>. All rights reserved.</p>
+                                <p style="margin-top: 16px;">
+                                    <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 12px; border-bottom: 1px solid #d1d5db; padding-bottom: 2px;">Terms & Conditions</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h2 style="color: #111827; margin-bottom: 16px;">Design Features</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; text-align: left; max-width: 800px; margin: 0 auto;">
+                <div>
+                    <h3 style="color: #2563eb; font-size: 16px; margin-bottom: 8px;">🎨 Color Scheme</h3>
+                    <ul style="color: #6b7280; font-size: 14px; line-height: 24px;">
+                        <li>Primary: #2563eb (Blue)</li>
+                        <li>Success: #059669 (Green)</li>
+                        <li>Warning: #f59e0b (Amber)</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="color: #2563eb; font-size: 16px; margin-bottom: 8px;">✨ Features</h3>
+                    <ul style="color: #6b7280; font-size: 14px; line-height: 24px;">
+                        <li>Logo integration</li>
+                        <li>Gradient backgrounds</li>
+                        <li>Modern shadows</li>
+                        <li>Responsive design</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="color: #2563eb; font-size: 16px; margin-bottom: 8px;">📱 Responsive</h3>
+                    <ul style="color: #6b7280; font-size: 14px; line-height: 24px;">
+                        <li>Mobile optimized</li>
+                        <li>Email client compatible</li>
+                        <li>Accessible design</li>
+                        <li>Professional layout</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

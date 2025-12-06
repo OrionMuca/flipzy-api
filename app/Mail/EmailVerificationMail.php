@@ -64,7 +64,9 @@ class EmailVerificationMail extends Mailable implements ShouldQueue
                 'recipientEmail' => $this->user->email,
                 'actionUrl' => $verificationUrl,
                 'actionText' => 'Verify Email Address',
-                'buttonColor' => '#10b981',
+                'buttonColor' => '#2563eb',
+                'logoUrl' => url('flipzy_logo.jpg'),
+                'headerColor' => '#2563eb',
             ],
         );
     }

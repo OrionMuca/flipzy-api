@@ -56,7 +56,9 @@ class PaymentConfirmationMail extends Mailable implements ShouldQueue
                 'entry' => $this->entry,
                 'greeting' => 'Hi ' . $this->entry->name . ',',
                 'recipientEmail' => $this->entry->email,
-                'buttonColor' => '#10b981',
+                'buttonColor' => '#059669',
+                'logoUrl' => url('flipzy_logo.jpg'),
+                'headerColor' => '#059669',
             ],
         );
     }

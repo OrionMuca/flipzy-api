@@ -3,8 +3,8 @@
         <td align="center" style="padding: 0;">
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" class="email-button">
                 <tr>
-                    <td align="center" style="background: linear-gradient(135deg, {{ $color ?? '#6366f1' }} 0%, {{ $color ?? '#8b5cf6' }} 100%); border-radius: 8px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);">
-                        <a href="{{ $url }}" style="display: inline-block; padding: 16px 32px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; letter-spacing: 0.3px; border-radius: 8px; background: linear-gradient(135deg, {{ $color ?? '#6366f1' }} 0%, {{ $color ?? '#8b5cf6' }} 100%); transition: all 0.3s ease; min-width: 200px; text-align: center;">
+                    <td align="center" style="background: linear-gradient(135deg, {{ $color ?? '#2563eb' }} 0%, {{ $color ?? '#1e40af' }} 100%); border-radius: 12px; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);">
+                        <a href="{{ $url }}" style="display: inline-block; padding: 18px 40px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; letter-spacing: 0.3px; border-radius: 12px; background: linear-gradient(135deg, {{ $color ?? '#2563eb' }} 0%, {{ $color ?? '#1e40af' }} 100%); transition: all 0.3s ease; min-width: 220px; text-align: center; line-height: 1.4;">
                             {{ $text }}
                         </a>
                     </td>
@@ -23,7 +23,7 @@
             display: block !important;
         }
         .email-button a {
-            padding: 14px 24px !important;
+            padding: 16px 32px !important;
             font-size: 15px !important;
             min-width: auto !important;
             width: 100% !important;

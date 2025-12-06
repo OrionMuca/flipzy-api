@@ -68,7 +68,9 @@ class AccountCreatedMail extends Mailable implements ShouldQueue
                 'recipientEmail' => $this->user->email,
                 'actionUrl' => $resetUrl,
                 'actionText' => 'Reset Password & Login',
-                'buttonColor' => '#6366f1',
+                'buttonColor' => '#2563eb',
+                'logoUrl' => url('flipzy_logo.jpg'),
+                'headerColor' => '#2563eb',
             ],
         );
     }

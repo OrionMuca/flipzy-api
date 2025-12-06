@@ -1,14 +1,77 @@
 @extends('emails.layouts.app')
 
 @section('content')
-    <!-- Icon Container - Using table for email compatibility -->
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px;">
+    <p style="margin: 0 0 24px; color: #374151; font-size: 17px; line-height: 28px; font-weight: 400;">
+        <strong style="color: #059669; font-weight: 600;">Great news!</strong> Your payment has been confirmed successfully.
+    </p>
+    
+    <!-- Subscription Details Box - Enhanced design -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 28px 0;">
         <tr>
-            <td align="center">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+            <td style="background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); border-radius: 14px; padding: 28px; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                <h3 style="margin: 0 0 24px; color: #111827; font-size: 20px; font-weight: 700; letter-spacing: -0.3px;">
+                    Subscription Details
+                </h3>
+                
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                    @if(isset($entry->plan))
                     <tr>
-                        <td class="email-icon-container" style="width: 64px; height: 64px; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-radius: 16px; text-align: center; vertical-align: middle;">
-                            <span class="email-icon-size" style="font-size: 32px; line-height: 64px; display: inline-block;">✅</span>
+                        <td style="padding: 14px 0; border-bottom: 1px solid #e5e7eb;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td>
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Plan:</span>
+                                    </td>
+                                    <td align="right">
+                                        <span style="color: #111827; font-size: 16px; font-weight: 600;">{{ $entry->plan->name ?? 'N/A' }}</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    @endif
+                    @if($entry->coupon_code)
+                        <tr>
+                            <td style="padding: 14px 0; border-bottom: 1px solid #e5e7eb;">
+                                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                    <tr>
+                                        <td>
+                                            <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Original Price:</span>
+                                        </td>
+                                        <td align="right">
+                                            <span style="color: #111827; font-size: 16px;">${{ number_format($entry->original_price ?? 0, 2) }}</span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 14px 0; border-bottom: 1px solid #e5e7eb;">
+                                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                    <tr>
+                                        <td>
+                                            <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Discount ({{ $entry->coupon_code }}):</span>
+                                        </td>
+                                        <td align="right">
+                                            <span style="color: #059669; font-size: 16px; font-weight: 600;">-${{ number_format($entry->discount_amount ?? 0, 2) }}</span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    @endif
+                    <tr>
+                        <td style="padding: 20px 0 0;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td>
+                                        <span style="color: #111827; font-size: 18px; font-weight: 700;">Amount Paid:</span>
+                                    </td>
+                                    <td align="right">
+                                        <span style="color: #059669; font-size: 22px; font-weight: 700;">${{ number_format($entry->discounted_price ?? 0, 2) }}</span>
+                                    </td>
+                                </tr>
+                            </table>
                         </td>
                     </tr>
                 </table>
@@ -16,52 +79,18 @@
         </tr>
     </table>
     
-    <p style="margin: 0 0 20px; color: #374151; font-size: 17px; line-height: 26px;">
-        <strong>Great news!</strong> Your payment has been confirmed successfully.
-    </p>
+    <!-- Next Steps Box - Enhanced design -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 28px 0;">
+        <tr>
+            <td style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-left: 4px solid #2563eb; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);">
+                <p style="margin: 0; color: #1e40af; font-size: 14px; line-height: 22px;">
+                    <strong style="font-weight: 600;">Next Steps:</strong> Your account will be activated when we launch. You'll receive an email with your login credentials at that time.
+                </p>
+            </td>
+        </tr>
+    </table>
     
-    <div style="background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-        <h3 style="margin: 0 0 20px; color: #111827; font-size: 18px; font-weight: 700; letter-spacing: -0.3px;">
-            📋 Subscription Details
-        </h3>
-        
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-            <tr>
-                <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                    <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Plan:</span>
-                    <span style="color: #111827; font-size: 16px; font-weight: 600; float: right;">{{ $entry->plan->name }}</span>
-                </td>
-            </tr>
-            @if($entry->coupon_code)
-                <tr>
-                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                        <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Original Price:</span>
-                        <span style="color: #111827; font-size: 16px; float: right;">${{ number_format($entry->original_price, 2) }}</span>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                        <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Discount ({{ $entry->coupon_code }}):</span>
-                        <span style="color: #10b981; font-size: 16px; font-weight: 600; float: right;">-${{ number_format($entry->discount_amount, 2) }}</span>
-                    </td>
-                </tr>
-            @endif
-            <tr>
-                <td style="padding: 16px 0 0;">
-                    <span style="color: #111827; font-size: 18px; font-weight: 700;">Amount Paid:</span>
-                    <span style="color: #111827; font-size: 20px; font-weight: 700; float: right;">${{ number_format($entry->discounted_price, 2) }}</span>
-                </td>
-            </tr>
-        </table>
-    </div>
-    
-    <div style="background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 6px; padding: 16px; margin: 24px 0;">
-        <p style="margin: 0; color: #1e40af; font-size: 14px; line-height: 20px;">
-            <strong>⏳ Next Steps:</strong> Your account will be activated when we launch. You'll receive an email with your login credentials at that time.
-        </p>
-    </div>
-    
-    <p style="margin: 0 0 20px; color: #374151; font-size: 15px; line-height: 24px;">
+    <p style="margin: 0 0 24px; color: #374151; font-size: 15px; line-height: 24px;">
         Thank you for your early support! We're working hard to bring you an amazing experience.
     </p>
 @endsection

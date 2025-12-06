@@ -19,26 +19,24 @@
                 border-radius: 0 !important;
             }
             .email-padding { 
-                padding: 24px 20px !important; 
+                padding: 32px 24px !important; 
             }
             .email-header-padding { 
-                padding: 12px 16px !important; 
-            }
-            .email-header-padding h1 {
-                font-size: 22px !important;
-            }
-            .email-header-padding img {
-                max-width: 100px !important;
-            }
-            .email-footer-padding { 
                 padding: 24px 20px !important; 
             }
+            .email-header-padding img {
+                max-width: 140px !important;
+                height: auto !important;
+            }
+            .email-footer-padding { 
+                padding: 32px 24px !important; 
+            }
             .email-button-padding {
-                padding: 0 20px 24px !important;
+                padding: 0 24px 32px !important;
             }
             .email-greeting {
-                font-size: 20px !important;
-                line-height: 28px !important;
+                font-size: 22px !important;
+                line-height: 30px !important;
             }
             .email-content {
                 font-size: 15px !important;
@@ -64,18 +62,18 @@
         }
     </style>
 </head>
-<body style="margin: 0; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh;">
+<body style="margin: 0; padding: 0; background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%); min-height: 100vh;">
         <tr>
-            <td align="center" style="padding: 20px 10px;">
+            <td align="center" style="padding: 40px 10px;">
                 <!-- Main Container -->
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="email-container" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); overflow: hidden;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="email-container" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); overflow: hidden;">
                     
                     <!-- Header -->
                     @include('emails.components.header', [
-                        'logoUrl' => $logoUrl ?? null,
+                        'logoUrl' => $logoUrl ?? url('flipzy_logo.jpg'),
                         'appName' => $appName ?? config('app.name'),
-                        'headerColor' => $headerColor ?? '#6366f1',
+                        'headerColor' => $headerColor ?? '#2563eb',
                     ])
                     
                     <!-- Content -->
@@ -83,7 +81,7 @@
                         <td class="email-padding" style="padding: 48px 48px 32px;">
                             <!-- Greeting -->
                             @if(isset($greeting))
-                                <h1 class="email-greeting" style="margin: 0 0 24px; font-size: 24px; font-weight: 700; line-height: 32px; color: #111827; letter-spacing: -0.5px;">
+                                <h1 class="email-greeting" style="margin: 0 0 24px; font-size: 26px; font-weight: 700; line-height: 34px; color: #111827; letter-spacing: -0.5px;">
                                     {{ $greeting }}
                                 </h1>
                             @endif
@@ -102,7 +100,7 @@
                                 @include('emails.components.button', [
                                     'url' => $actionUrl,
                                     'text' => $actionText,
-                                    'color' => $buttonColor ?? '#6366f1',
+                                    'color' => $buttonColor ?? '#2563eb',
                                 ])
                             </td>
                         </tr>
@@ -129,13 +127,13 @@
                 </table>
                 
                 <!-- Bottom Spacing -->
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; margin-top: 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; margin-top: 24px;">
                     <tr>
-                        <td align="center" style="padding: 16px 20px; color: rgba(255,255,255,0.9); font-size: 12px; line-height: 18px;">
-                            <p style="margin: 0 0 8px;">
+                        <td align="center" style="padding: 20px 24px; color: rgba(255,255,255,0.95); font-size: 13px; line-height: 20px;">
+                            <p style="margin: 0 0 8px; font-weight: 500;">
                                 This email was sent to <strong style="color: #ffffff;">{{ $recipientEmail ?? 'you' }}</strong>.
                             </p>
-                            <p style="margin: 0; opacity: 0.8;">
+                            <p style="margin: 0; opacity: 0.85; font-size: 12px;">
                                 If you didn't request this email, you can safely ignore it.
                             </p>
                         </td>

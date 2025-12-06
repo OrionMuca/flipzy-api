@@ -98,6 +98,13 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
     Route::post('/subscriptions/cancel', [\App\Http\Controllers\SubscriptionController::class, 'cancel']);
     Route::get('/subscriptions/history', [\App\Http\Controllers\SubscriptionController::class, 'history']);
     
+    // Notification routes (require auth)
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [\App\Http\Controllers\NotificationController::class, 'unreadCount']);
+    Route::put('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
+    Route::put('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{id}', [\App\Http\Controllers\NotificationController::class, 'destroy']);
+    
     // Admin routes (require admin role)
     Route::middleware('admin')->prefix('admin')->group(function () {
         // User management
@@ -155,6 +162,9 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         Route::get('/coupons/{id}', [\App\Http\Controllers\Admin\AdminCouponController::class, 'show']);
         Route::put('/coupons/{id}', [\App\Http\Controllers\Admin\AdminCouponController::class, 'update']);
         Route::delete('/coupons/{id}', [\App\Http\Controllers\Admin\AdminCouponController::class, 'destroy']);
+        
+        // Notification management
+        Route::post('/notifications/send', [\App\Http\Controllers\Admin\AdminNotificationController::class, 'send']);
     });
 });
 
