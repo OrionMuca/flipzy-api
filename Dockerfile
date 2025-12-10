@@ -23,7 +23,9 @@ RUN docker-php-ext-install \
     pcntl \
     bcmath \
     gd \
-    zip
+    zip \
+    && pecl install redis \
+    && docker-php-ext-enable redis
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -71,6 +73,8 @@ RUN apk add --no-cache --virtual .build-deps \
     bcmath \
     gd \
     zip \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
     && apk del .build-deps
 
 # Copy built application from builder
@@ -92,8 +96,11 @@ RUN mkdir -p /var/log/supervisor
 
 # Copy supervisor configuration
 COPY docker/supervisor/supervisord.conf /etc/supervisord.conf
+COPY docker/supervisor/php-fpm.conf /etc/supervisor/conf.d/php-fpm.conf
+COPY docker/supervisor/nginx.conf /etc/supervisor/conf.d/nginx.conf
 COPY docker/supervisor/laravel-worker.conf /etc/supervisor/conf.d/laravel-worker.conf
-COPY docker/supervisor/laravel-horizon.conf /etc/supervisor/conf.d/laravel-horizon.conf
+# Horizon disabled - uncomment if you want to use Horizon dashboard instead of regular workers
+# COPY docker/supervisor/laravel-horizon.conf /etc/supervisor/conf.d/laravel-horizon.conf
 
 # Copy startup script
 COPY docker/start.sh /usr/local/bin/start.sh

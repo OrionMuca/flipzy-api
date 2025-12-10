@@ -33,7 +33,7 @@ class AdminNotificationMail extends Mailable implements ShouldQueue
      */
     public function __construct(
         public User $user,
-        public string $subject,
+        public string $emailSubject,
         public string $message,
         public ?string $actionUrl = null,
         public ?string $actionText = null
@@ -45,7 +45,7 @@ class AdminNotificationMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: $this->subject,
+            subject: $this->emailSubject,
         );
     }
 
@@ -57,7 +57,7 @@ class AdminNotificationMail extends Mailable implements ShouldQueue
         return new Content(
             view: 'emails.admin.notification',
             with: [
-                'subject' => $this->subject,
+                'subject' => $this->emailSubject,
                 'message' => $this->message,
                 'actionUrl' => $this->actionUrl,
                 'actionText' => $this->actionText,

@@ -417,6 +417,153 @@
                 ]
             }
         },
+        "/admin/notifications/send": {
+            "post": {
+                "tags": [
+                    "Admin - Notifications"
+                ],
+                "summary": "Send notification to users (Admin only)",
+                "description": "Send email notifications to users. Can send to all users, selected users, filtered users, or a single user.",
+                "operationId": "78e0d21a202d21fdeb1b24f83e93d191",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "subject",
+                                    "message",
+                                    "recipient_type"
+                                ],
+                                "properties": {
+                                    "subject": {
+                                        "description": "Email subject",
+                                        "type": "string",
+                                        "example": "Important Update"
+                                    },
+                                    "message": {
+                                        "description": "Email message/content",
+                                        "type": "string",
+                                        "example": "We have an important update for you..."
+                                    },
+                                    "action_url": {
+                                        "description": "Optional action button URL",
+                                        "type": "string",
+                                        "format": "url",
+                                        "example": "https://yourapp.com/update",
+                                        "nullable": true
+                                    },
+                                    "action_text": {
+                                        "description": "Optional action button text",
+                                        "type": "string",
+                                        "example": "View Update",
+                                        "nullable": true
+                                    },
+                                    "recipient_type": {
+                                        "description": "Type of recipients: 'all' for all users, 'selected' for specific user IDs, 'filtered' for filtered users, 'single' for one user",
+                                        "type": "string",
+                                        "enum": [
+                                            "all",
+                                            "selected",
+                                            "filtered",
+                                            "single"
+                                        ],
+                                        "example": "all"
+                                    },
+                                    "user_ids": {
+                                        "description": "Array of user UUIDs (required when recipient_type is 'selected')",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        },
+                                        "nullable": true
+                                    },
+                                    "user_id": {
+                                        "description": "Single user UUID (required when recipient_type is 'single')",
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "nullable": true
+                                    },
+                                    "filters": {
+                                        "description": "Filter criteria (required when recipient_type is 'filtered')",
+                                        "properties": {
+                                            "role": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "investor",
+                                                    "wholesaler",
+                                                    "admin"
+                                                ],
+                                                "nullable": true
+                                            },
+                                            "search": {
+                                                "description": "Search by name or email",
+                                                "type": "string",
+                                                "nullable": true
+                                            }
+                                        },
+                                        "type": "object",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Notification sent successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Notifications sent successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "total_users": {
+                                                    "type": "integer",
+                                                    "example": 150
+                                                },
+                                                "sent": {
+                                                    "type": "integer",
+                                                    "example": 148
+                                                },
+                                                "failed": {
+                                                    "type": "integer",
+                                                    "example": 2
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/admin/properties": {
             "get": {
                 "tags": [
@@ -1619,6 +1766,25 @@
                                                 "name": {
                                                     "type": "string"
                                                 },
+                                                "phone_number": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "company_name": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "selected_roles": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "wholesaler",
+                                                            "investor"
+                                                        ]
+                                                    },
+                                                    "nullable": true
+                                                },
                                                 "status": {
                                                     "type": "string",
                                                     "enum": [
@@ -2710,6 +2876,170 @@
                 ]
             }
         },
+        "/notifications": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get user's notifications",
+                "description": "Get paginated list of notifications for the authenticated user",
+                "operationId": "0f031f66cd8c52bf73e89fb2d050ad83",
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Items per page (max 100)",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "unread_only",
+                        "in": "query",
+                        "description": "Show only unread notifications",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notifications retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/notifications/{id}/read": {
+            "put": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark notification as read",
+                "description": "Mark a specific notification as read",
+                "operationId": "c2930875bc1c01878623b115fa024155",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification marked as read"
+                    },
+                    "404": {
+                        "description": "Notification not found"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/notifications/read-all": {
+            "put": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark all notifications as read",
+                "description": "Mark all notifications for the authenticated user as read",
+                "operationId": "910dc6903a7e98cdfb91c1a6471026a8",
+                "responses": {
+                    "200": {
+                        "description": "All notifications marked as read"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/notifications/unread-count": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get unread notification count",
+                "description": "Get the count of unread notifications for the authenticated user",
+                "operationId": "5120217e8b1a75b2c61e53684a38c045",
+                "responses": {
+                    "200": {
+                        "description": "Unread count retrieved successfully"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/notifications/{id}": {
+            "delete": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Delete notification",
+                "description": "Delete a specific notification",
+                "operationId": "ccdcc730b2088097dd94128f24960dbf",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification deleted successfully"
+                    },
+                    "404": {
+                        "description": "Notification not found"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/v1/payments/intent": {
             "post": {
                 "tags": [
@@ -3583,6 +3913,15 @@
                                 "gpt-4o"
                             ]
                         }
+                    },
+                    {
+                        "name": "use_calculations",
+                        "in": "query",
+                        "description": "Force calculation-based estimate instead of AI (useful when OpenAI API key is not available)",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
                     }
                 ],
                 "responses": {
@@ -4031,7 +4370,8 @@
                             "schema": {
                                 "required": [
                                     "email",
-                                    "name"
+                                    "name",
+                                    "phone_number"
                                 ],
                                 "properties": {
                                     "email": {
@@ -4042,6 +4382,25 @@
                                     "name": {
                                         "description": "User name",
                                         "type": "string"
+                                    },
+                                    "phone_number": {
+                                        "description": "User phone number",
+                                        "type": "string"
+                                    },
+                                    "company_name": {
+                                        "description": "Company name (optional)",
+                                        "type": "string"
+                                    },
+                                    "selected_roles": {
+                                        "description": "Selected roles (optional)",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "enum": [
+                                                "wholesaler",
+                                                "investor"
+                                            ]
+                                        }
                                     },
                                     "coupon_code": {
                                         "description": "Optional coupon code for future use",
@@ -4080,6 +4439,25 @@
                                                 },
                                                 "name": {
                                                     "type": "string"
+                                                },
+                                                "phone_number": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "company_name": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "selected_roles": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "wholesaler",
+                                                            "investor"
+                                                        ]
+                                                    },
+                                                    "nullable": true
                                                 },
                                                 "status": {
                                                     "type": "string",
@@ -4206,6 +4584,25 @@
                                                 },
                                                 "name": {
                                                     "type": "string"
+                                                },
+                                                "phone_number": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "company_name": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "selected_roles": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "wholesaler",
+                                                            "investor"
+                                                        ]
+                                                    },
+                                                    "nullable": true
                                                 },
                                                 "status": {
                                                     "type": "string",
@@ -4349,6 +4746,25 @@
                                                 "name": {
                                                     "type": "string"
                                                 },
+                                                "phone_number": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "company_name": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "selected_roles": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "wholesaler",
+                                                            "investor"
+                                                        ]
+                                                    },
+                                                    "nullable": true
+                                                },
                                                 "status": {
                                                     "type": "string",
                                                     "enum": [
@@ -4435,6 +4851,9 @@
             "name": "Admin - Coupon Management"
         },
         {
+            "name": "Admin - Notifications"
+        },
+        {
             "name": "Admin - Property Management"
         },
         {
@@ -4460,6 +4879,9 @@
         },
         {
             "name": "Messaging"
+        },
+        {
+            "name": "Notifications"
         },
         {
             "name": "Payments"

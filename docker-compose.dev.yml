@@ -28,11 +28,15 @@ services:
       - QUEUE_CONNECTION=redis
       - CACHE_DRIVER=redis
       - SESSION_DRIVER=redis
+      - SEED_DATABASE=true          # Auto-seed on startup
+      - GENERATE_SWAGGER=true       # Auto-generate Swagger docs
     ports:
       - "8000:80"
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy  # Wait for MySQL to be healthy
+      redis:
+        condition: service_started  # Wait for Redis to start
     networks:
       - flipzy-network
 
@@ -56,6 +60,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s  # Give MySQL time to initialize
 
   redis:
     image: redis:7-alpine
@@ -65,6 +70,11 @@ services:
       - "6379:6379"
     networks:
       - flipzy-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   mysql_dev_data:
@@ -73,4 +83,3 @@ volumes:
 networks:
   flipzy-network:
     driver: bridge
-
