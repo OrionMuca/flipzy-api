@@ -248,7 +248,13 @@ class WaitingListController extends Controller
             ], 400);
         }
 
-        $result = $this->waitingListService->register($request->all());
+        // Set default selected_roles to both roles if not provided
+        $data = $request->all();
+        if (empty($data['selected_roles']) || !is_array($data['selected_roles'])) {
+            $data['selected_roles'] = ['wholesaler', 'investor'];
+        }
+
+        $result = $this->waitingListService->register($data);
 
         if (!$result['success']) {
             return response()->json([
