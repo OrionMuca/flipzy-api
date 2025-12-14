@@ -154,6 +154,11 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         // Waiting list management
         Route::get('/waiting-list', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'index']);
         Route::get('/waiting-list/stats', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'stats']);
+        Route::get('/waiting-list/daily-signups', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'dailySignups']);
+        Route::get('/waiting-list/geographic-distribution', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'geographicDistribution']);
+        Route::get('/waiting-list/export/csv', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'exportCsv']);
+        Route::get('/waiting-list/export/excel', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'exportExcel']);
+        Route::get('/waiting-list/export/pdf', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'exportPdf']);
         Route::get('/waiting-list/{id}', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'show']);
         
         // Coupon management
@@ -165,6 +170,15 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         
         // Notification management
         Route::post('/notifications/send', [\App\Http\Controllers\Admin\AdminNotificationController::class, 'send']);
+        
+        // Email campaign management
+        Route::get('/email-campaigns', [\App\Http\Controllers\Admin\AdminEmailCampaignController::class, 'index']);
+        Route::post('/email-campaigns', [\App\Http\Controllers\Admin\AdminEmailCampaignController::class, 'store']);
+        Route::get('/email-campaigns/stats', [\App\Http\Controllers\Admin\AdminEmailCampaignController::class, 'stats']);
+        Route::get('/email-campaigns/{id}', [\App\Http\Controllers\Admin\AdminEmailCampaignController::class, 'show']);
+        Route::put('/email-campaigns/{id}', [\App\Http\Controllers\Admin\AdminEmailCampaignController::class, 'update']);
+        Route::delete('/email-campaigns/{id}', [\App\Http\Controllers\Admin\AdminEmailCampaignController::class, 'destroy']);
+        Route::post('/email-campaigns/{id}/send', [\App\Http\Controllers\Admin\AdminEmailCampaignController::class, 'send']);
     });
 });
 

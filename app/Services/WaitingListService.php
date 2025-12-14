@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Coupon;
 use App\Mail\WaitingListWelcomeMail;
 use App\Services\CouponService;
+use App\Services\GeoService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -14,10 +15,12 @@ use Illuminate\Support\Str;
 class WaitingListService
 {
     protected CouponService $couponService;
+    protected GeoService $geoService;
 
-    public function __construct(CouponService $couponService)
+    public function __construct(CouponService $couponService, GeoService $geoService)
     {
         $this->couponService = $couponService;
+        $this->geoService = $geoService;
     }
 
     /**
@@ -91,12 +94,28 @@ class WaitingListService
                 ));
             }
 
+            // Capture IP address and determine state
+            $ipAddress = request()->ip();
+            $state = null;
+            if ($ipAddress) {
+                try {
+                    $state = $this->geoService->getStateFromIp($ipAddress);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to get state from IP during registration', [
+                        'ip' => $ipAddress,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             // Create waiting list entry
             $entry = WaitingListEntry::create([
                 'email' => $data['email'],
                 'name' => $data['name'],
                 'phone_number' => $data['phone_number'],
                 'company_name' => $data['company_name'] ?? null,
+                'ip_address' => $ipAddress,
+                'state' => $state,
                 'selected_roles' => !empty($selectedRoles) ? $selectedRoles : null,
                 'coupon_id' => $coupon?->id,
                 'coupon_code' => $data['coupon_code'] ?? null,

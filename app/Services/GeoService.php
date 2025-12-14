@@ -51,6 +51,44 @@ class GeoService
     }
 
     /**
+     * Get state from IP address using IP geolocation
+     */
+    public function getStateFromIp(string $ipAddress): ?string
+    {
+        // Skip private/local IPs
+        if (!filter_var($ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return null;
+        }
+        
+        $cacheKey = "ip_geo:{$ipAddress}";
+        
+        return Cache::remember($cacheKey, now()->addDays(30), function () use ($ipAddress) {
+            try {
+                // Use ipapi.co (free tier: 1,000 requests/day)
+                $response = Http::timeout(5)->get("https://ipapi.co/{$ipAddress}/json/");
+                
+                if ($response->successful()) {
+                    $data = $response->json();
+                    // Return US state code (2-letter abbreviation)
+                    $state = $data['region_code'] ?? null;
+                    
+                    // Only return if it's a valid US state code (2 letters)
+                    if ($state && strlen($state) === 2 && ctype_alpha($state)) {
+                        return strtoupper($state);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('IP geolocation failed', [
+                    'ip' => $ipAddress,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+            
+            return null;
+        });
+    }
+
+    /**
      * Reverse geocode coordinates to get address
      */
     public function reverseGeocode(float $latitude, float $longitude): ?array

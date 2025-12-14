@@ -19,11 +19,16 @@ class WaitingListEntryFactory extends Factory
      */
     public function definition(): array
     {
+        // US states for testing
+        $usStates = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'];
+        
         return [
             'email' => fake()->unique()->safeEmail(),
             'name' => fake()->name(),
             'phone_number' => fake()->phoneNumber(),
             'company_name' => fake()->optional()->company(),
+            'ip_address' => fake()->ipv4(),
+            'state' => fake()->randomElement($usStates),
             'selected_roles' => fake()->optional()->randomElements(['wholesaler', 'investor'], fake()->numberBetween(0, 2)),
             'subscription_plan_id' => null,
             'coupon_id' => null,

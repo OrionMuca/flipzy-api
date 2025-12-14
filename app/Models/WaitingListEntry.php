@@ -7,17 +7,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
 class WaitingListEntry extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, Notifiable;
 
     protected $fillable = [
         'email',
         'name',
         'phone_number',
         'company_name',
+        'ip_address',
+        'state',
         'selected_roles',
         'subscription_plan_id', // Nullable, kept for backward compatibility
         'coupon_id',
