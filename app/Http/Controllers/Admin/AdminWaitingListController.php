@@ -681,4 +681,264 @@ class AdminWaitingListController extends Controller
         
         return $pdf->download($filename);
     }
+
+    /**
+     * Create a new waiting list entry (Admin only)
+     */
+    #[OA\Post(
+        path: "/admin/waiting-list",
+        summary: "Create a new waiting list entry (Admin only)",
+        description: "Create a new waiting list entry manually from admin panel",
+        tags: ["Admin - Waiting List Management"],
+        security: [["bearerAuth" => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["email", "name", "phone_number"],
+                properties: [
+                    new OA\Property(property: "email", type: "string", format: "email", example: "user@example.com"),
+                    new OA\Property(property: "name", type: "string", example: "John Doe"),
+                    new OA\Property(property: "phone_number", type: "string", example: "+1234567890"),
+                    new OA\Property(property: "company_name", type: "string", nullable: true, example: "Acme Corp"),
+                    new OA\Property(property: "selected_roles", type: "array", nullable: true, items: new OA\Items(type: "string", enum: ["wholesaler", "investor"]), example: ["investor"]),
+                    new OA\Property(property: "coupon_code", type: "string", nullable: true, example: "WELCOME10"),
+                    new OA\Property(property: "status", type: "string", enum: ["pending", "account_created", "cancelled"], example: "pending"),
+                    new OA\Property(property: "state", type: "string", nullable: true, example: "CA"),
+                    new OA\Property(property: "ip_address", type: "string", nullable: true, example: "192.168.1.1"),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: "Entry created successfully",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "success", type: "boolean", example: true),
+                        new OA\Property(property: "message", type: "string", example: "Waiting list entry created successfully"),
+                        new OA\Property(property: "data", type: "object", ref: "#/components/schemas/WaitingListEntry"),
+                    ]
+                )
+            ),
+            new OA\Response(response: 400, description: "Validation error"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
+    public function store(Request $request): JsonResponse
+    {
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'email' => 'required|email|max:255|unique:waiting_list_entries,email',
+            'name' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:20',
+            'company_name' => 'nullable|string|max:255',
+            'selected_roles' => 'nullable|array',
+            'selected_roles.*' => 'string|in:wholesaler,investor',
+            'coupon_code' => 'nullable|string|max:50|exists:coupons,code',
+            'status' => 'nullable|string|in:pending,account_created,cancelled',
+            'state' => 'nullable|string|max:2',
+            'ip_address' => 'nullable|ip',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $request->all();
+        
+        // Set default selected_roles if not provided
+        if (empty($data['selected_roles']) || !is_array($data['selected_roles'])) {
+            $data['selected_roles'] = ['wholesaler', 'investor'];
+        }
+
+        // Set default status if not provided
+        if (empty($data['status'])) {
+            $data['status'] = 'pending';
+        }
+
+        // Handle coupon if provided
+        $coupon = null;
+        if (!empty($data['coupon_code'])) {
+            $coupon = \App\Models\Coupon::where('code', strtoupper($data['coupon_code']))->first();
+            if ($coupon) {
+                $data['coupon_id'] = $coupon->id;
+            }
+        }
+
+        // Generate verification token
+        $data['verification_token'] = \Illuminate\Support\Str::random(64);
+
+        // Create entry
+        $entry = WaitingListEntry::create([
+            'email' => $data['email'],
+            'name' => $data['name'],
+            'phone_number' => $data['phone_number'],
+            'company_name' => $data['company_name'] ?? null,
+            'selected_roles' => $data['selected_roles'],
+            'coupon_id' => $coupon?->id,
+            'coupon_code' => $data['coupon_code'] ?? null,
+            'status' => $data['status'],
+            'state' => $data['state'] ?? null,
+            'ip_address' => $data['ip_address'] ?? null,
+            'verification_token' => $data['verification_token'],
+            'metadata' => $data['metadata'] ?? [],
+        ]);
+
+        $entry->load('coupon');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Waiting list entry created successfully',
+            'data' => new WaitingListEntryResource($entry),
+        ], 201);
+    }
+
+    /**
+     * Update a waiting list entry (Admin only)
+     */
+    #[OA\Put(
+        path: "/admin/waiting-list/{id}",
+        summary: "Update a waiting list entry (Admin only)",
+        description: "Update an existing waiting list entry",
+        tags: ["Admin - Waiting List Management"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "string", format: "uuid")),
+        ],
+        requestBody: new OA\RequestBody(
+            required: false,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: "email", type: "string", format: "email", example: "user@example.com"),
+                    new OA\Property(property: "name", type: "string", example: "John Doe"),
+                    new OA\Property(property: "phone_number", type: "string", example: "+1234567890"),
+                    new OA\Property(property: "company_name", type: "string", nullable: true, example: "Acme Corp"),
+                    new OA\Property(property: "selected_roles", type: "array", nullable: true, items: new OA\Items(type: "string", enum: ["wholesaler", "investor"]), example: ["investor"]),
+                    new OA\Property(property: "coupon_code", type: "string", nullable: true, example: "WELCOME10"),
+                    new OA\Property(property: "status", type: "string", enum: ["pending", "account_created", "cancelled"], example: "pending"),
+                    new OA\Property(property: "state", type: "string", nullable: true, example: "CA"),
+                    new OA\Property(property: "ip_address", type: "string", nullable: true, example: "192.168.1.1"),
+                    new OA\Property(property: "email_verified_at", type: "string", format: "date-time", nullable: true),
+                    new OA\Property(property: "account_created_at", type: "string", format: "date-time", nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Entry updated successfully",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "success", type: "boolean", example: true),
+                        new OA\Property(property: "message", type: "string", example: "Waiting list entry updated successfully"),
+                        new OA\Property(property: "data", type: "object", ref: "#/components/schemas/WaitingListEntry"),
+                    ]
+                )
+            ),
+            new OA\Response(response: 400, description: "Validation error"),
+            new OA\Response(response: 404, description: "Entry not found"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
+    public function update(Request $request, string $id): JsonResponse
+    {
+        $entry = WaitingListEntry::findOrFail($id);
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'email' => 'sometimes|email|max:255|unique:waiting_list_entries,email,' . $id,
+            'name' => 'sometimes|string|max:255',
+            'phone_number' => 'sometimes|string|max:20',
+            'company_name' => 'nullable|string|max:255',
+            'selected_roles' => 'nullable|array',
+            'selected_roles.*' => 'string|in:wholesaler,investor',
+            'coupon_code' => 'nullable|string|max:50|exists:coupons,code',
+            'status' => 'sometimes|string|in:pending,account_created,cancelled',
+            'state' => 'nullable|string|max:2',
+            'ip_address' => 'nullable|ip',
+            'email_verified_at' => 'nullable|date',
+            'account_created_at' => 'nullable|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $request->all();
+
+        // Handle coupon if provided
+        if (isset($data['coupon_code'])) {
+            if (!empty($data['coupon_code'])) {
+                $coupon = \App\Models\Coupon::where('code', strtoupper($data['coupon_code']))->first();
+                if ($coupon) {
+                    $data['coupon_id'] = $coupon->id;
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Coupon code not found',
+                    ], 400);
+                }
+            } else {
+                $data['coupon_id'] = null;
+                $data['coupon_code'] = null;
+            }
+        }
+
+        // Handle status changes
+        if (isset($data['status']) && $data['status'] === 'account_created' && $entry->status !== 'account_created') {
+            $data['account_created_at'] = now();
+        }
+
+        // Update entry
+        $entry->update($data);
+        $entry->load('coupon');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Waiting list entry updated successfully',
+            'data' => new WaitingListEntryResource($entry),
+        ]);
+    }
+
+    /**
+     * Delete a waiting list entry (Admin only)
+     */
+    #[OA\Delete(
+        path: "/admin/waiting-list/{id}",
+        summary: "Delete a waiting list entry (Admin only)",
+        description: "Delete an existing waiting list entry",
+        tags: ["Admin - Waiting List Management"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "string", format: "uuid")),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Entry deleted successfully",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "success", type: "boolean", example: true),
+                        new OA\Property(property: "message", type: "string", example: "Waiting list entry deleted successfully"),
+                    ]
+                )
+            ),
+            new OA\Response(response: 404, description: "Entry not found"),
+            new OA\Response(response: 403, description: "Forbidden - Admin access required"),
+        ]
+    )]
+    public function destroy(string $id): JsonResponse
+    {
+        $entry = WaitingListEntry::findOrFail($id);
+        $entry->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Waiting list entry deleted successfully',
+        ]);
+    }
 }

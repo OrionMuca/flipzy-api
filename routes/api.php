@@ -153,6 +153,7 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         
         // Waiting list management
         Route::get('/waiting-list', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'index']);
+        Route::post('/waiting-list', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'store']);
         Route::get('/waiting-list/stats', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'stats']);
         Route::get('/waiting-list/daily-signups', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'dailySignups']);
         Route::get('/waiting-list/geographic-distribution', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'geographicDistribution']);
@@ -160,6 +161,8 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         Route::get('/waiting-list/export/excel', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'exportExcel']);
         Route::get('/waiting-list/export/pdf', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'exportPdf']);
         Route::get('/waiting-list/{id}', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'show']);
+        Route::put('/waiting-list/{id}', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'update']);
+        Route::delete('/waiting-list/{id}', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'destroy']);
         
         // Coupon management
         Route::get('/coupons', [\App\Http\Controllers\Admin\AdminCouponController::class, 'index']);

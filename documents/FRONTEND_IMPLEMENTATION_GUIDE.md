@@ -8,10 +8,11 @@ This guide provides everything a frontend developer needs to implement the new w
 2. [Daily Signups Dashboard](#daily-signups-dashboard)
 3. [Geographic Distribution](#geographic-distribution)
 4. [Enhanced Filtering & Reports](#enhanced-filtering--reports)
-5. [Data Export](#data-export)
-6. [Email Campaign Management](#email-campaign-management)
-7. [TypeScript Interfaces](#typescript-interfaces)
-8. [Error Handling](#error-handling)
+5. [CRUD Operations](#crud-operations)
+6. [Data Export](#data-export)
+7. [Email Campaign Management](#email-campaign-management)
+8. [TypeScript Interfaces](#typescript-interfaces)
+9. [Error Handling](#error-handling)
 
 ---
 
@@ -391,6 +392,382 @@ const result = await getWaitingList(filters);
 console.log(`Total: ${result.summary.total_records}`);
 console.log(`Investors: ${result.summary.investors}`);
 console.log(`Entries: ${result.data.length}`);
+```
+
+---
+
+## CRUD Operations
+
+### Create Waiting List Entry
+
+#### Endpoint
+```
+POST /api/v1/admin/waiting-list
+```
+
+#### Request Body
+```typescript
+interface CreateWaitingListEntryRequest {
+  email: string;                                    // Required, must be unique
+  name: string;                                     // Required
+  phone_number: string;                             // Required
+  company_name?: string | null;                     // Optional
+  selected_roles?: ('wholesaler' | 'investor')[];  // Optional, defaults to both
+  coupon_code?: string | null;                      // Optional, must exist in coupons table
+  status?: 'pending' | 'account_created' | 'cancelled';  // Optional, defaults to 'pending'
+  state?: string | null;                           // Optional, 2-letter state code
+  ip_address?: string | null;                      // Optional, valid IP address
+}
+```
+
+#### Request Example
+```typescript
+async function createWaitingListEntry(data: CreateWaitingListEntryRequest): Promise<WaitingListResponse> {
+  const response = await fetch('/api/v1/admin/waiting-list', {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify(data)
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.errors || error.error || 'Failed to create entry');
+  }
+  
+  return response.json();
+}
+
+// Usage
+const newEntry = await createWaitingListEntry({
+  email: 'newuser@example.com',
+  name: 'Jane Smith',
+  phone_number: '+1234567890',
+  company_name: 'Tech Corp',
+  selected_roles: ['investor'],
+  status: 'pending'
+});
+```
+
+#### Response Structure
+```typescript
+interface CreateWaitingListEntryResponse {
+  success: boolean;
+  message: string;  // "Waiting list entry created successfully"
+  data: WaitingListEntry;
+}
+```
+
+#### Example Response
+```json
+{
+  "success": true,
+  "message": "Waiting list entry created successfully",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "newuser@example.com",
+    "name": "Jane Smith",
+    "phone_number": "+1234567890",
+    "company_name": "Tech Corp",
+    "selected_roles": ["investor"],
+    "status": "pending",
+    "coupon_code": null,
+    "email_verified": false,
+    "email_verified_at": null,
+    "account_created": false,
+    "account_created_at": null,
+    "created_at": "12-14-2024 15:30:00",
+    "updated_at": "12-14-2024 15:30:00",
+    "state": null,
+    "ip_address": null
+  }
+}
+```
+
+#### Validation Rules
+- `email`: Required, must be valid email format, must be unique
+- `name`: Required, max 255 characters
+- `phone_number`: Required, max 20 characters
+- `company_name`: Optional, max 255 characters
+- `selected_roles`: Optional array, each item must be 'wholesaler' or 'investor', defaults to both if not provided
+- `coupon_code`: Optional, must exist in coupons table if provided
+- `status`: Optional, must be one of: 'pending', 'account_created', 'cancelled', defaults to 'pending'
+- `state`: Optional, max 2 characters
+- `ip_address`: Optional, must be valid IP address format
+
+---
+
+### Update Waiting List Entry
+
+#### Endpoint
+```
+PUT /api/v1/admin/waiting-list/{id}
+```
+
+#### Request Body
+```typescript
+interface UpdateWaitingListEntryRequest {
+  email?: string;                                    // Optional, must be unique if changed
+  name?: string;                                     // Optional
+  phone_number?: string;                             // Optional
+  company_name?: string | null;                     // Optional
+  selected_roles?: ('wholesaler' | 'investor')[];  // Optional
+  coupon_code?: string | null;                      // Optional, must exist in coupons table
+  status?: 'pending' | 'account_created' | 'cancelled';  // Optional
+  state?: string | null;                           // Optional, 2-letter state code
+  ip_address?: string | null;                      // Optional, valid IP address
+  email_verified_at?: string | null;              // Optional, ISO date-time string
+  account_created_at?: string | null;             // Optional, ISO date-time string
+}
+```
+
+#### Request Example
+```typescript
+async function updateWaitingListEntry(
+  id: string, 
+  data: UpdateWaitingListEntryRequest
+): Promise<WaitingListResponse> {
+  const response = await fetch(`/api/v1/admin/waiting-list/${id}`, {
+    method: 'PUT',
+    headers: headers,
+    body: JSON.stringify(data)
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.errors || error.error || 'Failed to update entry');
+  }
+  
+  return response.json();
+}
+
+// Usage
+const updatedEntry = await updateWaitingListEntry('550e8400-e29b-41d4-a716-446655440000', {
+  name: 'Jane Smith Updated',
+  status: 'account_created',
+  selected_roles: ['investor', 'wholesaler']
+});
+```
+
+#### Response Structure
+```typescript
+interface UpdateWaitingListEntryResponse {
+  success: boolean;
+  message: string;  // "Waiting list entry updated successfully"
+  data: WaitingListEntry;
+}
+```
+
+#### Example Response
+```json
+{
+  "success": true,
+  "message": "Waiting list entry updated successfully",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "newuser@example.com",
+    "name": "Jane Smith Updated",
+    "phone_number": "+1234567890",
+    "company_name": "Tech Corp",
+    "selected_roles": ["investor", "wholesaler"],
+    "status": "account_created",
+    "coupon_code": null,
+    "email_verified": false,
+    "email_verified_at": null,
+    "account_created": true,
+    "account_created_at": "12-14-2024 16:00:00",
+    "created_at": "12-14-2024 15:30:00",
+    "updated_at": "12-14-2024 16:00:00",
+    "state": null,
+    "ip_address": null
+  }
+}
+```
+
+#### Validation Rules
+- All fields are optional (use `sometimes` validation)
+- `email`: If provided, must be valid email format and unique (excluding current entry)
+- `coupon_code`: If provided, must exist in coupons table
+- `status`: If set to 'account_created' and entry wasn't already, `account_created_at` is automatically set to current time
+- Other validation rules same as create endpoint
+
+#### Special Behavior
+- If `status` is changed to `'account_created'` and the entry wasn't already in that status, `account_created_at` is automatically set to the current timestamp
+- If `coupon_code` is set to empty string or null, the coupon association is removed
+
+---
+
+### Delete Waiting List Entry
+
+#### Endpoint
+```
+DELETE /api/v1/admin/waiting-list/{id}
+```
+
+#### Request Example
+```typescript
+async function deleteWaitingListEntry(id: string): Promise<void> {
+  const response = await fetch(`/api/v1/admin/waiting-list/${id}`, {
+    method: 'DELETE',
+    headers: headers
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to delete entry');
+  }
+  
+  return response.json();
+}
+
+// Usage
+await deleteWaitingListEntry('550e8400-e29b-41d4-a716-446655440000');
+```
+
+#### Response Structure
+```typescript
+interface DeleteWaitingListEntryResponse {
+  success: boolean;
+  message: string;  // "Waiting list entry deleted successfully"
+}
+```
+
+#### Example Response
+```json
+{
+  "success": true,
+  "message": "Waiting list entry deleted successfully"
+}
+```
+
+#### Error Responses
+- `404`: Entry not found
+- `403`: Forbidden - Admin access required
+
+---
+
+### Complete CRUD Example (React/TypeScript)
+
+```typescript
+// Complete CRUD service
+class WaitingListService {
+  private baseUrl = '/api/v1/admin/waiting-list';
+  private headers = {
+    'Authorization': `Bearer ${this.getToken()}`,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  private getToken(): string {
+    // Get token from your auth system
+    return localStorage.getItem('access_token') || '';
+  }
+
+  // Create
+  async create(data: CreateWaitingListEntryRequest): Promise<WaitingListEntry> {
+    const response = await fetch(this.baseUrl, {
+      method: 'POST',
+      headers: this.headers,
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.errors ? JSON.stringify(error.errors) : error.error || 'Failed to create entry');
+    }
+
+    const result = await response.json();
+    return result.data;
+  }
+
+  // Read (Get single entry)
+  async get(id: string): Promise<WaitingListEntry> {
+    const response = await fetch(`${this.baseUrl}/${id}`, {
+      method: 'GET',
+      headers: this.headers
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch entry');
+    }
+
+    const result = await response.json();
+    return result.data;
+  }
+
+  // Update
+  async update(id: string, data: UpdateWaitingListEntryRequest): Promise<WaitingListEntry> {
+    const response = await fetch(`${this.baseUrl}/${id}`, {
+      method: 'PUT',
+      headers: this.headers,
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.errors ? JSON.stringify(error.errors) : error.error || 'Failed to update entry');
+    }
+
+    const result = await response.json();
+    return result.data;
+  }
+
+  // Delete
+  async delete(id: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${id}`, {
+      method: 'DELETE',
+      headers: this.headers
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete entry');
+    }
+  }
+}
+
+// Usage in React component
+const WaitingListCRUD = () => {
+  const [entries, setEntries] = useState<WaitingListEntry[]>([]);
+  const service = new WaitingListService();
+
+  const handleCreate = async (data: CreateWaitingListEntryRequest) => {
+    try {
+      const newEntry = await service.create(data);
+      setEntries([...entries, newEntry]);
+      alert('Entry created successfully!');
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const handleUpdate = async (id: string, data: UpdateWaitingListEntryRequest) => {
+    try {
+      const updatedEntry = await service.update(id, data);
+      setEntries(entries.map(e => e.id === id ? updatedEntry : e));
+      alert('Entry updated successfully!');
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this entry?')) {
+      return;
+    }
+
+    try {
+      await service.delete(id);
+      setEntries(entries.filter(e => e.id !== id));
+      alert('Entry deleted successfully!');
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  return (
+    // Your component JSX
+  );
+};
 ```
 
 ---
