@@ -58,7 +58,7 @@ class AdminNotificationMail extends Mailable implements ShouldQueue
             view: 'emails.admin.notification',
             with: [
                 'subject' => $this->emailSubject,
-                'message' => $this->message,
+                'emailContent' => $this->message,
                 'actionUrl' => $this->actionUrl,
                 'actionText' => $this->actionText,
                 'user' => $this->user,

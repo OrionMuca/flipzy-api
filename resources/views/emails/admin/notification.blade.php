@@ -3,7 +3,7 @@
 @section('content')
     <!-- Message Content -->
     <div style="color: #374151; font-size: 16px; line-height: 26px; white-space: pre-line;">
-        {!! nl2br(e($message)) !!}
+        {!! nl2br(e($emailContent ?? $content ?? '')) !!}
     </div>
     
     @if($actionUrl && $actionText)

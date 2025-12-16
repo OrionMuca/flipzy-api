@@ -52,7 +52,7 @@ class WaitingListCampaignMail extends Mailable implements ShouldQueue
             view: 'emails.admin.notification',
             with: [
                 'subject' => $this->campaign->subject,
-                'message' => $this->campaign->content,
+                'emailContent' => $this->campaign->content,
                 'actionUrl' => null,
                 'actionText' => null,
                 'user' => $this->entry,
