@@ -4,13 +4,14 @@ namespace App\Mail;
 
 use App\Models\WaitingListEntry;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+// Temporarily disabled queues - uncomment when queue system is configured
+// use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class WaitingListWelcomeMail extends Mailable implements ShouldQueue
+class WaitingListWelcomeMail extends Mailable // implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

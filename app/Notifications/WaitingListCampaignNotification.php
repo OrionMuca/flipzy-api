@@ -5,10 +5,11 @@ namespace App\Notifications;
 use App\Mail\WaitingListCampaignMail;
 use App\Models\EmailCampaign;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+// Temporarily disabled queues - uncomment when queue system is configured
+// use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
-class WaitingListCampaignNotification extends Notification implements ShouldQueue
+class WaitingListCampaignNotification extends Notification // implements ShouldQueue
 {
     use Queueable;
 
