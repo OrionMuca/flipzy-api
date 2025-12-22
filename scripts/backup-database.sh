@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Database Backup Script for Flipzy Backend
+# Creates daily backups and keeps them for 7 days
 # Usage: ./scripts/backup-database.sh [full|incremental]
 
 set -e
@@ -8,17 +9,14 @@ set -e
 BACKUP_TYPE=${1:-full}
 BACKUP_DIR="./docker/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
-RETENTION_DAYS=30
+RETENTION_DAYS=7  # Keep backups for 1 week
 
 # Load environment variables
 if [ -f .env ]; then
     export $(cat .env | grep -v '^#' | xargs)
 fi
 
-DB_NAME=${DB_DATABASE:-flipzy}
-DB_USER=${DB_USERNAME:-flipzy}
-DB_PASS=${DB_PASSWORD:-flipzy_password}
-DB_ROOT_PASS=${DB_ROOT_PASSWORD:-root_password}
+DB_ROOT_PASS=${DB_ROOT_PASSWORD}
 
 # Create backup directory if it doesn't exist
 mkdir -p "$BACKUP_DIR"
@@ -39,10 +37,21 @@ if [ "$BACKUP_TYPE" = "full" ]; then
         --events \
         --all-databases | gzip > "$BACKUP_FILE"
     
+    # Verify backup file was created and is not empty
+    if [ ! -s "$BACKUP_FILE" ]; then
+        echo "❌ Error: Backup file is empty or was not created!"
+        exit 1
+    fi
+    
+    # Test backup integrity
+    if ! gzip -t "$BACKUP_FILE" 2>/dev/null; then
+        echo "❌ Error: Backup file is corrupted!"
+        exit 1
+    fi
+    
     echo "✅ Full backup created: $BACKUP_FILE"
     
 elif [ "$BACKUP_TYPE" = "incremental" ]; then
-    BACKUP_FILE="$BACKUP_DIR/incremental_backup_${DATE}.sql.gz"
     echo "📦 Creating incremental backup..."
     
     # Flush logs to create new binlog file
@@ -65,16 +74,18 @@ else
     exit 1
 fi
 
-# Cleanup old backups
+# Cleanup old backups (older than 7 days)
 echo "🧹 Cleaning up backups older than $RETENTION_DAYS days..."
-find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +$RETENTION_DAYS -delete
-find "$BACKUP_DIR" -name "*.binlog.gz" -type f -mtime +$RETENTION_DAYS -delete
+find "$BACKUP_DIR" -name "*.sql.gz" -type f -mtime +$RETENTION_DAYS -delete 2>/dev/null || true
+find "$BACKUP_DIR" -name "*.binlog.gz" -type f -mtime +$RETENTION_DAYS -delete 2>/dev/null || true
 
 echo ""
 echo "📊 Backup Summary:"
-echo "   Backup file: $BACKUP_FILE"
-echo "   Size: $(du -h "$BACKUP_FILE" | cut -f1)"
+if [ "$BACKUP_TYPE" = "full" ]; then
+    echo "   Backup file: $BACKUP_FILE"
+    echo "   Size: $(du -h "$BACKUP_FILE" | cut -f1)"
+fi
 echo "   Location: $BACKUP_DIR"
+echo "   Retention: $RETENTION_DAYS days"
 echo ""
 echo "✅ Backup completed successfully!"
-

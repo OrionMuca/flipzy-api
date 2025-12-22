@@ -1,6 +1,12 @@
 version: '3.8'
 
 # Staging Docker Compose
+# IMPORTANT: Create a .env file in the project root with the following variables:
+# DB_PASSWORD=Go@Flipzy2000
+# DB_ROOT_PASSWORD=root_password
+# (and other environment variables as needed)
+# Docker Compose will automatically load variables from .env file
+
 services:
   app:
     build:
@@ -25,7 +31,7 @@ services:
       - DB_PORT=3306
       - DB_DATABASE=${DB_DATABASE:-flipzy_staging}
       - DB_USERNAME=${DB_USERNAME:-flipzy}
-      - DB_PASSWORD=${DB_PASSWORD:-flipzy_password}
+      - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - QUEUE_CONNECTION=redis
@@ -51,8 +57,8 @@ services:
     environment:
       - MYSQL_DATABASE=${DB_DATABASE:-flipzy_staging}
       - MYSQL_USER=${DB_USERNAME:-flipzy}
-      - MYSQL_PASSWORD=${DB_PASSWORD:-flipzy_password}
-      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-root_password}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
     volumes:
       # MySQL data on local disk (32GB) - Docker volume
       - mysql_staging_data:/var/lib/mysql
@@ -62,7 +68,7 @@ services:
     networks:
       - flipzy-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root_password}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5

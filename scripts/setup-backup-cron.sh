@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Setup automated backups with cron
+# Setup automated daily backups with cron
 # Usage: ./scripts/setup-backup-cron.sh
 
 set -e
@@ -12,7 +12,10 @@ BACKUP_SCRIPT="$SCRIPT_DIR/backup-database.sh"
 echo "⏰ Setting up automated database backups..."
 echo "==========================================="
 
-# Create cron job
+# Make backup script executable
+chmod +x "$BACKUP_SCRIPT"
+
+# Create cron job (daily at 2:00 AM)
 CRON_JOB="0 2 * * * cd $PROJECT_DIR && $BACKUP_SCRIPT full >> $PROJECT_DIR/docker/backups/backup.log 2>&1"
 
 # Check if cron job already exists
@@ -29,10 +32,13 @@ echo ""
 echo "📅 Backup schedule:"
 echo "   - Full backup: Daily at 2:00 AM"
 echo "   - Backup location: $PROJECT_DIR/docker/backups"
+echo "   - Retention: 7 days"
 echo ""
 echo "📋 Current cron jobs:"
 crontab -l | grep "$BACKUP_SCRIPT" || echo "   (none found)"
 echo ""
 echo "💡 To view backup logs:"
 echo "   tail -f $PROJECT_DIR/docker/backups/backup.log"
-
+echo ""
+echo "💡 To test backup manually:"
+echo "   ./scripts/backup-database.sh full"

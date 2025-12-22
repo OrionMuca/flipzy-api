@@ -1,24 +1,54 @@
 [mysqld]
 # Performance optimizations
 max_allowed_packet = 256M
-innodb_buffer_pool_size = 1G
+innodb_buffer_pool_size = 1.5G  # ~18.75% of total 8GB RAM (leaves headroom for system + frontend)
 innodb_log_file_size = 256M
 innodb_flush_log_at_trx_commit = 2
 innodb_flush_method = O_DIRECT
+innodb_file_per_table = 1
+innodb_read_io_threads = 4
+innodb_write_io_threads = 4
+innodb_thread_concurrency = 0
 
 # Connection settings
 max_connections = 200
 wait_timeout = 600
 interactive_timeout = 600
+thread_cache_size = 50
+table_open_cache = 2000
+table_definition_cache = 1400
+
+# Query optimization
+tmp_table_size = 64M
+max_heap_table_size = 64M
+sort_buffer_size = 2M
+read_buffer_size = 2M
+read_rnd_buffer_size = 4M
+join_buffer_size = 2M
 
 # Binary logging for backups
 log_bin = /var/lib/mysql/mysql-bin
 expire_logs_days = 7
 max_binlog_size = 100M
+binlog_format = ROW
+
+# Slow query log (useful for debugging)
+slow_query_log = 1
+slow_query_log_file = /var/lib/mysql/slow-query.log
+long_query_time = 2
+
+# Error logging
+log_error = /var/lib/mysql/error.log
 
 # Character set
 character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci
+
+# SQL Mode (Laravel compatible)
+sql_mode = STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+
+# Timezone (set to UTC for consistency)
+default-time-zone = '+00:00'
 
 [client]
 default-character-set = utf8mb4

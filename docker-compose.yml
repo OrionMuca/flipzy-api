@@ -1,5 +1,11 @@
 version: '3.8'
 
+# IMPORTANT: Create a .env file in the project root with the following variables:
+# DB_PASSWORD=Go@Flipzy2000
+# DB_ROOT_PASSWORD=root_password
+# (and other environment variables as needed)
+# Docker Compose will automatically load variables from .env file
+
 services:
   # Laravel Application
   app:
@@ -8,6 +14,15 @@ services:
       dockerfile: Dockerfile
     container_name: flipzy-backend
     restart: unless-stopped
+    # Memory limits (enforced in Docker Swarm mode, informational for regular docker-compose)
+    # For regular docker-compose, set via: docker update --memory=1.2g flipzy-backend
+    # Leaves headroom: ~1.5GB free for system + frontend + spikes
+    deploy:
+      resources:
+        limits:
+          memory: 1.2G
+        reservations:
+          memory: 800M
     working_dir: /var/www/html
     volumes:
       - ./storage:/var/www/html/storage
@@ -21,7 +36,7 @@ services:
       - DB_PORT=${DB_PORT:-3306}
       - DB_DATABASE=${DB_DATABASE:-flipzy}
       - DB_USERNAME=${DB_USERNAME:-flipzy}
-      - DB_PASSWORD=${DB_PASSWORD:-flipzy_password}
+      - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_HOST=redis
       - REDIS_PORT=${REDIS_PORT:-6379}
       - QUEUE_CONNECTION=${QUEUE_CONNECTION:-redis}
@@ -45,11 +60,20 @@ services:
     image: mysql:8.0
     container_name: flipzy-mysql
     restart: unless-stopped
+    # Memory limits (enforced in Docker Swarm mode, informational for regular docker-compose)
+    # For regular docker-compose, set via: docker update --memory=2.5g flipzy-mysql
+    # MySQL buffer pool: 1.5GB (leaves ~1GB for connections, buffers, overhead)
+    deploy:
+      resources:
+        limits:
+          memory: 2.5G
+        reservations:
+          memory: 2G
     environment:
       - MYSQL_DATABASE=${DB_DATABASE:-flipzy}
       - MYSQL_USER=${DB_USERNAME:-flipzy}
-      - MYSQL_PASSWORD=${DB_PASSWORD:-flipzy_password}
-      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-root_password}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
     volumes:
       - ./docker/mysql/data:/var/lib/mysql
       - ./docker/backups:/backups
@@ -59,7 +83,7 @@ services:
     networks:
       - flipzy-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root_password}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -70,7 +94,15 @@ services:
     image: redis:7-alpine
     container_name: flipzy-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 400mb --maxmemory-policy allkeys-lru
+    # Memory limits (enforced in Docker Swarm mode, informational for regular docker-compose)
+    # For regular docker-compose, set via: docker update --memory=500m flipzy-redis
+    deploy:
+      resources:
+        limits:
+          memory: 500M
+        reservations:
+          memory: 400M
     volumes:
       - redis_data:/data
     ports:
@@ -83,26 +115,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # phpMyAdmin - Database Management Tool
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin:latest
-    container_name: flipzy-phpmyadmin
-    restart: unless-stopped
-    environment:
-      - PMA_HOST=mysql
-      - PMA_PORT=3306
-      - PMA_USER=${DB_USERNAME:-flipzy}
-      - PMA_PASSWORD=${DB_PASSWORD:-flipzy_password}
-      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-root_password}
-      - UPLOAD_LIMIT=300M
-    ports:
-      - "${PHPMYADMIN_PORT:-8080}:80"
-    depends_on:
-      - mysql
-    networks:
-      - flipzy-network
-    profiles:
-      - tools  # Only start with --profile tools
+  # phpMyAdmin removed - using DataGrip for database management instead
 
   # Redis Commander - Redis Management Tool
   redis-commander:

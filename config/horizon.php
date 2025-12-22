@@ -183,7 +183,7 @@ return [
     |
     */
 
-    'memory_limit' => 64,
+    'memory_limit' => 128,  # Per worker memory limit (6 workers × 128MB = ~768MB)
 
     /*
     |--------------------------------------------------------------------------
@@ -215,7 +215,7 @@ return [
     'environments' => [
         'production' => [
             'supervisor-1' => [
-                'maxProcesses' => 10,
+                'maxProcesses' => 5,  # Optimized for 8GB RAM (leaves headroom for system + frontend)
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],

@@ -98,9 +98,10 @@ RUN mkdir -p /var/log/supervisor
 COPY docker/supervisor/supervisord.conf /etc/supervisord.conf
 COPY docker/supervisor/php-fpm.conf /etc/supervisor/conf.d/php-fpm.conf
 COPY docker/supervisor/nginx.conf /etc/supervisor/conf.d/nginx.conf
-COPY docker/supervisor/laravel-worker.conf /etc/supervisor/conf.d/laravel-worker.conf
-# Horizon disabled - uncomment if you want to use Horizon dashboard instead of regular workers
-# COPY docker/supervisor/laravel-horizon.conf /etc/supervisor/conf.d/laravel-horizon.conf
+# Regular worker disabled - using Horizon instead for better queue management
+# COPY docker/supervisor/laravel-worker.conf /etc/supervisor/conf.d/laravel-worker.conf
+# Enable Horizon for queue management and dashboard
+COPY docker/supervisor/laravel-horizon.conf /etc/supervisor/conf.d/laravel-horizon.conf
 
 # Copy startup script
 COPY docker/start.sh /usr/local/bin/start.sh
