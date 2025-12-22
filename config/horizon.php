@@ -183,7 +183,7 @@ return [
     |
     */
 
-    'memory_limit' => 128,  # Per worker memory limit (6 workers × 128MB = ~768MB)
+    'memory_limit' => (int) env('HORIZON_MEMORY_LIMIT', 128),
 
     /*
     |--------------------------------------------------------------------------
@@ -199,31 +199,33 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default'],
-            'balance' => 'auto',
-            'autoScalingStrategy' => 'time',
-            'maxProcesses' => 1,
-            'maxTime' => 0,
-            'maxJobs' => 0,
-            'memory' => 128,
-            'tries' => 1,
-            'timeout' => 60,
-            'nice' => 0,
+            'queue' => env('HORIZON_QUEUES') 
+                ? array_map('trim', explode(',', env('HORIZON_QUEUES')))
+                : ['default', 'emails-waiting-list', 'emails-auth', 'emails-admin'],
+            'balance' => env('HORIZON_BALANCE', 'auto'),
+            'autoScalingStrategy' => env('HORIZON_AUTO_SCALING_STRATEGY', 'time'),
+            'maxProcesses' => (int) env('HORIZON_MAX_PROCESSES', 1),
+            'maxTime' => (int) env('HORIZON_MAX_TIME', 0),
+            'maxJobs' => (int) env('HORIZON_MAX_JOBS', 0),
+            'memory' => (int) env('HORIZON_MEMORY', 128),
+            'tries' => (int) env('HORIZON_TRIES', 1),
+            'timeout' => (int) env('HORIZON_TIMEOUT', 60),
+            'nice' => (int) env('HORIZON_NICE', 0),
         ],
     ],
 
     'environments' => [
         'production' => [
             'supervisor-1' => [
-                'maxProcesses' => 5,  # Optimized for 8GB RAM (leaves headroom for system + frontend)
-                'balanceMaxShift' => 1,
-                'balanceCooldown' => 3,
+                'maxProcesses' => (int) env('HORIZON_MAX_PROCESSES', 5),
+                'balanceMaxShift' => (int) env('HORIZON_BALANCE_MAX_SHIFT', 1),
+                'balanceCooldown' => (int) env('HORIZON_BALANCE_COOLDOWN', 3),
             ],
         ],
 
         'local' => [
             'supervisor-1' => [
-                'maxProcesses' => 3,
+                'maxProcesses' => (int) env('HORIZON_MAX_PROCESSES', 3),
             ],
         ],
     ],
