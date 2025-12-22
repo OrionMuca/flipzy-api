@@ -5,14 +5,13 @@ namespace App\Mail;
 use App\Models\EmailCampaign;
 use App\Models\WaitingListEntry;
 use Illuminate\Bus\Queueable;
-// Temporarily disabled queues - uncomment when queue system is configured
-// use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class WaitingListCampaignMail extends Mailable // implements ShouldQueue
+class WaitingListCampaignMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
