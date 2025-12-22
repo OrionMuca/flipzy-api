@@ -22,6 +22,7 @@ services:
       # Images and public files on DigitalOcean volume (100GB)
       - /mnt/volume_atl1_01/storage/app:/var/www/html/storage/app
       - ./bootstrap/cache:/var/www/html/bootstrap/cache
+      - ./.env:/var/www/html/.env:ro
     environment:
       - APP_ENV=staging
       - APP_DEBUG=${APP_DEBUG:-true}
