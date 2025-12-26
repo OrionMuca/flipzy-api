@@ -27,14 +27,20 @@ class UserSeeder extends Seeder
             ]
         );
         
-        // Update email_verified_at if user already exists but not verified
+        // Always update password and email_verified_at
+        $admin->password = Hash::make('password');
         if (!$admin->email_verified_at) {
             $admin->email_verified_at = Carbon::now();
-            $admin->save();
         }
+        $admin->save();
         
-        if (!$admin->hasRole('admin')) {
-            $admin->assignRole('admin');
+        // Find role by name and guard, then assign
+        $adminRole = \App\Models\Role::where('name', 'admin')
+            ->where('guard_name', 'api')
+            ->first();
+        
+        if ($adminRole && !$admin->hasRole($adminRole)) {
+            $admin->assignRole($adminRole);
         }
 
         $this->command->info('✅ Admin User');
@@ -53,12 +59,18 @@ class UserSeeder extends Seeder
                 'email_verified_at' => Carbon::now(),
             ]
         );
+        $wholesaler1->password = Hash::make('password');
         if (!$wholesaler1->email_verified_at) {
             $wholesaler1->email_verified_at = Carbon::now();
-            $wholesaler1->save();
         }
-        if (!$wholesaler1->hasRole('wholesaler')) {
-            $wholesaler1->assignRole('wholesaler');
+        $wholesaler1->save();
+        
+        $wholesalerRole = \App\Models\Role::where('name', 'wholesaler')
+            ->where('guard_name', 'api')
+            ->first();
+        
+        if ($wholesalerRole && !$wholesaler1->hasRole($wholesalerRole)) {
+            $wholesaler1->assignRole($wholesalerRole);
         }
 
         $wholesaler2 = User::firstOrCreate(
@@ -69,12 +81,14 @@ class UserSeeder extends Seeder
                 'email_verified_at' => Carbon::now(),
             ]
         );
+        $wholesaler2->password = Hash::make('password');
         if (!$wholesaler2->email_verified_at) {
             $wholesaler2->email_verified_at = Carbon::now();
-            $wholesaler2->save();
         }
-        if (!$wholesaler2->hasRole('wholesaler')) {
-            $wholesaler2->assignRole('wholesaler');
+        $wholesaler2->save();
+        
+        if ($wholesalerRole && !$wholesaler2->hasRole($wholesalerRole)) {
+            $wholesaler2->assignRole($wholesalerRole);
         }
 
         $this->command->info('✅ Wholesaler Users');
@@ -85,6 +99,10 @@ class UserSeeder extends Seeder
         $this->command->newLine();
 
         // Create Investor Users
+        $investorRole = \App\Models\Role::where('name', 'investor')
+            ->where('guard_name', 'api')
+            ->first();
+
         $investor1 = User::firstOrCreate(
             ['email' => 'investor@flipzy.com'],
             [
@@ -93,12 +111,14 @@ class UserSeeder extends Seeder
                 'email_verified_at' => Carbon::now(),
             ]
         );
+        $investor1->password = Hash::make('password');
         if (!$investor1->email_verified_at) {
             $investor1->email_verified_at = Carbon::now();
-            $investor1->save();
         }
-        if (!$investor1->hasRole('investor')) {
-            $investor1->assignRole('investor');
+        $investor1->save();
+        
+        if ($investorRole && !$investor1->hasRole($investorRole)) {
+            $investor1->assignRole($investorRole);
         }
 
         $investor2 = User::firstOrCreate(
@@ -109,12 +129,14 @@ class UserSeeder extends Seeder
                 'email_verified_at' => Carbon::now(),
             ]
         );
+        $investor2->password = Hash::make('password');
         if (!$investor2->email_verified_at) {
             $investor2->email_verified_at = Carbon::now();
-            $investor2->save();
         }
-        if (!$investor2->hasRole('investor')) {
-            $investor2->assignRole('investor');
+        $investor2->save();
+        
+        if ($investorRole && !$investor2->hasRole($investorRole)) {
+            $investor2->assignRole($investorRole);
         }
 
         $investor3 = User::firstOrCreate(
@@ -125,12 +147,14 @@ class UserSeeder extends Seeder
                 'email_verified_at' => Carbon::now(),
             ]
         );
+        $investor3->password = Hash::make('password');
         if (!$investor3->email_verified_at) {
             $investor3->email_verified_at = Carbon::now();
-            $investor3->save();
         }
-        if (!$investor3->hasRole('investor')) {
-            $investor3->assignRole('investor');
+        $investor3->save();
+        
+        if ($investorRole && !$investor3->hasRole($investorRole)) {
+            $investor3->assignRole($investorRole);
         }
 
         $this->command->info('✅ Investor Users');
@@ -143,11 +167,10 @@ class UserSeeder extends Seeder
 
         $this->command->info('📊 Summary:');
         $this->command->line('   Total users: ' . User::count());
-        $this->command->line('   Admin users: ' . User::role('admin')->count());
-        $this->command->line('   Wholesaler users: ' . User::role('wholesaler')->count());
-        $this->command->line('   Investor users: ' . User::role('investor')->count());
+        $this->command->line('   Admin users: ' . User::role('admin', 'api')->count());
+        $this->command->line('   Wholesaler users: ' . User::role('wholesaler', 'api')->count());
+        $this->command->line('   Investor users: ' . User::role('investor', 'api')->count());
         $this->command->newLine();
         $this->command->info('✨ All users seeded successfully!');
     }
 }
-

@@ -6,6 +6,7 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Mail\PasswordResetMail;
 use App\Mail\EmailVerificationMail;
+use App\Services\PasswordGrantService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,13 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: "Authentication")]
 class AuthController extends Controller
 {
+    protected PasswordGrantService $passwordGrantService;
+
+    public function __construct(PasswordGrantService $passwordGrantService)
+    {
+        $this->passwordGrantService = $passwordGrantService;
+    }
+
     /**
      * Register a new user
      */
@@ -75,7 +83,7 @@ class AuthController extends Controller
 
         // Send email verification
         $verificationToken = Str::random(64);
-        \DB::table('email_verification_tokens')->updateOrInsert(
+        DB::table('email_verification_tokens')->updateOrInsert(
             ['email' => $user->email],
             [
                 'token' => Hash::make($verificationToken),
@@ -98,15 +106,29 @@ class AuthController extends Controller
             // Don't fail registration if email fails
         }
 
-        $token = $user->createToken('Flipzy API')->accessToken;
+        // Generate token using password grant
+        try {
+            $tokenData = $this->passwordGrantService->generateToken($request->email, $request->password);
+        } catch (\Exception $e) {
+            Log::error('Failed to generate password grant token during registration', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            // Fallback to personal access token if password grant fails
+            $tokenData = [
+                'access_token' => $user->createToken('Flipzy API')->accessToken,
+                'token_type' => 'Bearer',
+            ];
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'User registered successfully',
             'data' => [
                 'user' => $user->load('roles'),
-                'access_token' => $token,
-                'token_type' => 'Bearer',
+                'access_token' => $tokenData['access_token'],
+                'token_type' => $tokenData['token_type'] ?? 'Bearer',
+                'expires_in' => $tokenData['expires_in'] ?? null,
             ],
         ], 201);
     }
@@ -180,7 +202,7 @@ class AuthController extends Controller
         // If email is not verified, resend verification email
         if (!$user->email_verified_at) {
             $verificationToken = Str::random(64);
-            \DB::table('email_verification_tokens')->updateOrInsert(
+            DB::table('email_verification_tokens')->updateOrInsert(
                 ['email' => $user->email],
                 [
                     'token' => Hash::make($verificationToken),
@@ -188,7 +210,6 @@ class AuthController extends Controller
                 ]
             );
             
-            // Use frontend URL for verification link
             $frontendUrl = config('app.frontend_url');
             $verificationUrl = rtrim($frontendUrl, '/') . '/verify-email?token=' . $verificationToken . '&email=' . urlencode($user->email);
             
@@ -204,7 +225,20 @@ class AuthController extends Controller
             }
         }
 
-        $token = $user->createToken('Flipzy API')->accessToken;
+        try {
+            $tokenData = $this->passwordGrantService->generateToken($request->email, $request->password);
+        } catch (\Exception $e) {
+            Log::error('Failed to generate password grant token during login', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication failed. Please try again.',
+                'error' => config('app.debug') ? $e->getMessage() : 'Token generation failed',
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,
@@ -213,8 +247,9 @@ class AuthController extends Controller
                 : 'Login successful. Please verify your email address. A verification email has been sent.',
             'data' => [
                 'user' => $user->load('roles'),
-                'access_token' => $token,
-                'token_type' => 'Bearer',
+                'access_token' => $tokenData['access_token'],
+                'token_type' => $tokenData['token_type'] ?? 'Bearer',
+                'expires_in' => $tokenData['expires_in'] ?? null,
                 'email_verified' => $user->email_verified_at !== null,
             ],
         ]);

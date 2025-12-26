@@ -41,6 +41,10 @@ if [ ! -f "storage/oauth-private.key" ] || [ ! -f "storage/oauth-public.key" ]; 
     php artisan passport:client --personal --name="Personal Access Client" --no-interaction || true
 fi
 
+# Ensure password grant client exists
+echo "🔐 Ensuring password grant client exists..."
+php artisan passport:ensure-password-grant-client --no-interaction || true
+
 # Run migrations
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
     echo "🗄️  Running database migrations..."
