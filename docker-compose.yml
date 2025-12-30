@@ -80,7 +80,7 @@ services:
       - ./docker/backups:/backups
       - ./docker/mysql/conf.d:/etc/mysql/conf.d
     ports:
-      - "${DB_PORT:-3306}:3306"
+      - "127.0.0.1:${DB_PORT:-3306}:3306"  # Localhost only - use SSH tunnel for external access
     networks:
       - flipzy-network
     healthcheck:
@@ -107,7 +107,7 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"  # Localhost only - use SSH tunnel for external access
     networks:
       - flipzy-network
     healthcheck:
