@@ -42,6 +42,10 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     
+    // Buy Box routes (require auth)
+    Route::get('/buy-box', [\App\Http\Controllers\BuyBoxController::class, 'show']);
+    Route::put('/buy-box', [\App\Http\Controllers\BuyBoxController::class, 'update']);
+    
     // Property CRUD (create, update, delete require auth)
     Route::post('/properties', [\App\Http\Controllers\PropertyController::class, 'store']);
     Route::put('/properties/{property}', [\App\Http\Controllers\PropertyController::class, 'update']);

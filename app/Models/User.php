@@ -160,4 +160,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Transaction::class);
     }
+
+    /**
+     * Get the buy box for this user
+     */
+    public function buyBox(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(BuyBox::class);
+    }
 }
