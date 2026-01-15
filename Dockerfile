@@ -86,7 +86,12 @@ WORKDIR /var/www/html
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache
+    && chmod -R 755 /var/www/html/bootstrap/cache \
+    && if [ -f /var/www/html/storage/oauth-private.key ]; then \
+        chmod 600 /var/www/html/storage/oauth-private.key && \
+        chmod 600 /var/www/html/storage/oauth-public.key && \
+        chown www-data:www-data /var/www/html/storage/oauth-*.key; \
+    fi
 
 # Copy nginx configuration
 COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf

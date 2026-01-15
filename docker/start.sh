@@ -90,6 +90,12 @@ echo "🔒 Setting permissions..."
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache || true
 chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache || true
 
+# Re-apply OAuth key permissions (in case chmod -R changed them)
+if [ -f "storage/oauth-private.key" ] && [ -f "storage/oauth-public.key" ]; then
+    chmod 600 storage/oauth-private.key
+    chmod 600 storage/oauth-public.key
+fi
+
 # Start supervisor (manages PHP-FPM, Nginx, and workers)
 echo "🚀 Starting services..."
 echo "=========================================="

@@ -9,16 +9,17 @@
 
 1. [Authentication](#authentication)
 2. [Properties](#properties)
-3. [Messaging](#messaging)
-4. [Analytics](#analytics)
-5. [AI Rehab Estimation](#ai-rehab-estimation)
-6. [Payments](#payments)
-7. [Subscriptions](#subscriptions)
-8. [Refunds](#refunds)
-9. [Notifications](#notifications)
-10. [Waiting List](#waiting-list)
-11. [Admin Endpoints](#admin-endpoints)
-12. [Webhooks](#webhooks)
+3. [Buy Box](#buy-box)
+4. [Messaging](#messaging)
+5. [Analytics](#analytics)
+6. [AI Rehab Estimation](#ai-rehab-estimation)
+7. [Payments](#payments)
+8. [Subscriptions](#subscriptions)
+9. [Refunds](#refunds)
+10. [Notifications](#notifications)
+11. [Waiting List](#waiting-list)
+12. [Admin Endpoints](#admin-endpoints)
+13. [Webhooks](#webhooks)
 
 ---
 
@@ -426,6 +427,213 @@
     "property_id": "uuid",
     "status": "queued"
   }
+}
+```
+
+---
+
+## Buy Box
+
+The Buy Box feature allows investors to define and store their property investment preferences. All fields are optional, and investors can update their preferences at any time.
+
+**Note:** Only users with the `investor` or `admin` role can access and manage buy boxes.
+
+---
+
+### Get Buy Box
+**GET** `/buy-box`
+
+**Description:** Get the authenticated user's buy box preferences. Creates an empty buy box if one doesn't exist.
+
+**Authentication:** Required (investor or admin role)
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "user_id": "uuid",
+    "location": {
+      "preferred_cities": ["string"],
+      "preferred_zip_codes": ["string"],
+      "target_counties": ["string"],
+      "target_neighborhoods": ["string"],
+      "must_have_amenities": ["string"]
+    },
+    "property_details": {
+      "bedrooms": {
+        "min": "integer|null",
+        "max": "integer|null"
+      },
+      "bathrooms": {
+        "min": "number|null",
+        "max": "number|null"
+      },
+      "square_feet": {
+        "min": "integer|null",
+        "max": "integer|null"
+      },
+      "lot_size": {
+        "min": "integer|null",
+        "max": "integer|null"
+      }
+    },
+    "property_conditions": ["string"],
+    "property_types": ["string"],
+    "has_adu_potential": "boolean|null",
+    "construction_types": ["string"],
+    "amenities": {
+      "has_pool": "boolean|null",
+      "is_waterfront": "boolean|null"
+    },
+    "layout_types": ["string"],
+    "funding_methods": ["string"],
+    "rental_investment_criteria": {
+      "min_profit": "number|null",
+      "min_roi": "number|null",
+      "target_cap_rate": "number|null",
+      "desired_occupancy_rate": "number|null",
+      "expected_monthly_cash_flow": "number|null",
+      "expected_annual_cash_flow": "number|null"
+    },
+    "investment_strategies": ["string"],
+    "created_at": "string",
+    "updated_at": "string"
+  }
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized` - User is not authenticated
+- `403 Forbidden` - User does not have investor or admin role
+
+---
+
+### Update Buy Box
+**PUT** `/buy-box`
+
+**Description:** Create or update the authenticated user's buy box preferences. All fields are optional. Partial updates are supported.
+
+**Authentication:** Required (investor or admin role)
+
+**Request Body:**
+```json
+{
+  "preferred_cities": ["string (optional, max: 100 each)"],
+  "preferred_zip_codes": ["string (optional, max: 10 each)"],
+  "target_counties": ["string (optional, max: 100 each)"],
+  "target_neighborhoods": ["string (optional, max: 100 each)"],
+  "must_have_amenities": ["string (optional, max: 255 each)"],
+  "min_bedrooms": "integer (optional, min: 0, max: 50)",
+  "max_bedrooms": "integer (optional, min: 0, max: 50, must be >= min_bedrooms)",
+  "min_bathrooms": "number (optional, min: 0, max: 50)",
+  "max_bathrooms": "number (optional, min: 0, max: 50, must be >= min_bathrooms)",
+  "min_square_feet": "integer (optional, min: 0)",
+  "max_square_feet": "integer (optional, min: 0, must be >= min_square_feet)",
+  "min_lot_size": "integer (optional, min: 0)",
+  "max_lot_size": "integer (optional, min: 0, must be >= min_lot_size)",
+  "property_conditions": ["string (optional, enum: Turnkey|Retail Ready|Rental Ready)"],
+  "property_types": ["string (optional, enum: Single-Family|Land|Multifamily|Commercial)"],
+  "has_adu_potential": "boolean (optional)",
+  "construction_types": ["string (optional, enum: Brick Built|Stick Built|Block Built|Stucco Exterior|Other)"],
+  "has_pool": "boolean (optional)",
+  "is_waterfront": "boolean (optional)",
+  "layout_types": ["string (optional, enum: Open floor plan|Traditional|Custom)"],
+  "funding_methods": ["string (optional, enum: Cash|Hard money|Private money|DSCR loans|Conventional mortgages|FHA loans|VA loans)"],
+  "min_profit": "number (optional, min: 0)",
+  "min_roi": "number (optional, min: 0, max: 100)",
+  "target_cap_rate": "number (optional, min: 0, max: 100)",
+  "desired_occupancy_rate": "number (optional, min: 0, max: 100)",
+  "expected_monthly_cash_flow": "number (optional)",
+  "expected_annual_cash_flow": "number (optional)",
+  "investment_strategies": ["string (optional, enum: Fix and Flip|Short-Term Rental|Mid-Term Rental|Long-Term Rental|Lease Option|House Hacking)"]
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Buy box updated successfully",
+  "data": {
+    "id": "uuid",
+    "user_id": "uuid",
+    "location": {
+      "preferred_cities": ["string"],
+      "preferred_zip_codes": ["string"],
+      "target_counties": ["string"],
+      "target_neighborhoods": ["string"],
+      "must_have_amenities": ["string"]
+    },
+    "property_details": {
+      "bedrooms": {
+        "min": "integer|null",
+        "max": "integer|null"
+      },
+      "bathrooms": {
+        "min": "number|null",
+        "max": "number|null"
+      },
+      "square_feet": {
+        "min": "integer|null",
+        "max": "integer|null"
+      },
+      "lot_size": {
+        "min": "integer|null",
+        "max": "integer|null"
+      }
+    },
+    "property_conditions": ["string"],
+    "property_types": ["string"],
+    "has_adu_potential": "boolean|null",
+    "construction_types": ["string"],
+    "amenities": {
+      "has_pool": "boolean|null",
+      "is_waterfront": "boolean|null"
+    },
+    "layout_types": ["string"],
+    "funding_methods": ["string"],
+    "rental_investment_criteria": {
+      "min_profit": "number|null",
+      "min_roi": "number|null",
+      "target_cap_rate": "number|null",
+      "desired_occupancy_rate": "number|null",
+      "expected_monthly_cash_flow": "number|null",
+      "expected_annual_cash_flow": "number|null"
+    },
+    "investment_strategies": ["string"],
+    "created_at": "string",
+    "updated_at": "string"
+  }
+}
+```
+
+**Validation Rules:**
+- All fields are optional
+- `max_bedrooms` must be >= `min_bedrooms` (if both provided)
+- `max_bathrooms` must be >= `min_bathrooms` (if both provided)
+- `max_square_feet` must be >= `min_square_feet` (if both provided)
+- `max_lot_size` must be >= `min_lot_size` (if both provided)
+- `min_roi`, `target_cap_rate`, and `desired_occupancy_rate` cannot exceed 100
+- Array fields accept empty arrays `[]` to clear preferences
+
+**Error Responses:**
+- `401 Unauthorized` - User is not authenticated
+- `403 Forbidden` - User does not have investor or admin role
+- `422 Validation Error` - Invalid input data
+
+**Example Request:**
+```json
+{
+  "preferred_cities": ["Miami", "Tampa"],
+  "min_bedrooms": 3,
+  "max_bedrooms": 5,
+  "property_types": ["Single-Family", "Multifamily"],
+  "has_pool": true,
+  "investment_strategies": ["Fix and Flip", "Long-Term Rental"],
+  "min_profit": 50000,
+  "min_roi": 15.5
 }
 ```
 
