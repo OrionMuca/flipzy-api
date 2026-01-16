@@ -16,8 +16,11 @@ class PropertyEnrichmentService
     /**
      * Enrich a property with data from external APIs (queued by default)
      */
-    public function enrichProperty(Property $property, bool $forceFresh = false, array $endpoints = ['detail', 'sale_history', 'comparable_sales', 'events']): Property
-    {
+    public function enrichProperty(
+        Property $property, 
+        bool $forceFresh = false, 
+        array $endpoints = ['detail', 'sale_history', 'comparable_sales', 'events']
+    ): Property {
         // Use the new comprehensive ATTOM enrichment
         \App\Jobs\EnrichPropertyWithAttomJob::dispatch($property, $endpoints, $forceFresh);
         return $property;
@@ -26,8 +29,11 @@ class PropertyEnrichmentService
     /**
      * Perform the actual enrichment
      */
-    public function performEnrichment(Property $property, bool $forceFresh = false, array $endpoints = ['detail', 'sale_history', 'comparable_sales', 'events']): Property
-    {
+    public function performEnrichment(
+        Property $property, 
+        bool $forceFresh = false, 
+        array $endpoints = ['detail', 'sale_history', 'comparable_sales', 'events']
+    ): Property {
         $enrichmentData = [
             'attom_data' => null,
             'geocoding_data' => null,
@@ -42,6 +48,7 @@ class PropertyEnrichmentService
                 'property_id' => $property->id,
                 'address' => $property->address,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             
             // Fallback to basic enrichment if comprehensive fails
@@ -63,6 +70,7 @@ class PropertyEnrichmentService
                 Log::error('ATTOM fallback enrichment also failed', [
                     'property_id' => $property->id,
                     'error' => $fallbackException->getMessage(),
+                    'trace' => $fallbackException->getTraceAsString(),
                 ]);
             }
         }
@@ -92,6 +100,7 @@ class PropertyEnrichmentService
                 Log::error('Geocoding failed', [
                     'property_id' => $property->id,
                     'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
             }
         }
@@ -104,12 +113,82 @@ class PropertyEnrichmentService
     }
 
     /**
+     * Fetch property data without storing to database (for preview/testing)
+     */
+    public function fetchPropertyData(
+        string $address,
+        ?string $city = null,
+        ?string $state = null,
+        ?string $zip = null,
+        array $endpoints = ['detail'],
+        bool $forceFresh = false
+    ): array {
+        $results = [];
+
+        foreach ($endpoints as $endpoint) {
+            try {
+                $results[$endpoint] = match($endpoint) {
+                    'detail' => $this->attomService->fetchPropertyData($address, $city, $state, $zip, $forceFresh),
+                    'sale_history' => $this->attomService->getSaleHistory($address, $city, $state, $zip, $forceFresh, null),
+                    'comparable_sales' => $this->attomService->getComparableSales($address, $city, $state, $zip, [], $forceFresh, null),
+                    'events' => $this->attomService->getPropertyEvents($address, $city, $state, $zip, $forceFresh, null),
+                    'snapshot' => $this->attomService->getPropertySnapshot($address, $city, $state, $forceFresh, null),
+                    default => null,
+                };
+            } catch (\Exception $e) {
+                Log::warning("Failed to fetch {$endpoint} data", [
+                    'address' => $address,
+                    'city' => $city,
+                    'state' => $state,
+                    'zip' => $zip,
+                    'endpoint' => $endpoint,
+                    'error' => $e->getMessage(),
+                ]);
+                $results[$endpoint] = null;
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Fetch and extract property data (returns clean formatted data)
+     */
+    public function fetchAndExtractPropertyData(
+        string $address,
+        ?string $city = null,
+        ?string $state = null,
+        ?string $zip = null,
+        bool $forceFresh = false
+    ): ?array {
+        try {
+            return $this->attomService->fetchAndExtractPropertyData(
+                $address, 
+                $city, 
+                $state, 
+                $zip, 
+                $forceFresh
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch and extract property data', [
+                'address' => $address,
+                'city' => $city,
+                'state' => $state,
+                'zip' => $zip,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
      * Update property with data from ATTOM
      */
     protected function updatePropertyFromAttom(Property $property, array $data): void
     {
         $updates = [];
 
+        // Only update fields that are empty/null
         if (isset($data['square_feet']) && !$property->square_feet) {
             $updates['square_feet'] = $data['square_feet'];
         }
@@ -137,7 +216,48 @@ class PropertyEnrichmentService
 
         if (!empty($updates)) {
             $property->update($updates);
+            Log::info('Updated property from ATTOM data', [
+                'property_id' => $property->id,
+                'updated_fields' => array_keys($updates),
+            ]);
         }
     }
-}
 
+    /**
+     * Validate if address is complete enough for API call
+     */
+    public function validateAddress(
+        string $address,
+        ?string $city = null,
+        ?string $state = null,
+        ?string $zip = null
+    ): bool {
+        // At minimum we need street address
+        if (empty(trim($address))) {
+            return false;
+        }
+
+        // Prefer having city and state, but can work with just address
+        // ATTOM API works best with complete addresses
+        return true;
+    }
+
+    /**
+     * Format address for display
+     */
+    public function formatAddress(
+        string $address,
+        ?string $city = null,
+        ?string $state = null,
+        ?string $zip = null
+    ): string {
+        $parts = array_filter([
+            trim($address),
+            trim($city ?? ''),
+            trim($state ?? ''),
+            trim($zip ?? ''),
+        ]);
+
+        return implode(', ', $parts);
+    }
+}

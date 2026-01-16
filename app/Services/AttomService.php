@@ -7,7 +7,6 @@ use App\Models\Property;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class AttomService
 {
@@ -21,7 +20,7 @@ class AttomService
     // Rate limiting tracking
     protected static array $requestTimestamps = [];
     protected static int $hourlyRequestCount = 0;
-    protected static $hourlyResetTime = null;
+    protected static ?int $hourlyResetTime = null;
 
     public function __construct()
     {
@@ -29,9 +28,22 @@ class AttomService
         $this->apiKey = $config['api_key'] ?? env('ATTOM_API_KEY');
         $this->baseUrl = $config['api_url'] ?? env('ATTOM_API_URL', 'https://api.gateway.attomdata.com');
         $this->timeout = $config['timeout'] ?? 30;
-        $this->rateLimitConfig = $config['rate_limit'] ?? ['requests_per_minute' => 60, 'requests_per_hour' => 1000];
-        $this->retryConfig = $config['retry'] ?? ['max_attempts' => 3, 'backoff_multiplier' => 2];
-        $this->cacheConfig = $config['cache'] ?? ['ttl_days' => 7, 'enabled' => true];
+        $this->rateLimitConfig = $config['rate_limit'] ?? [
+            'requests_per_minute' => 60, 
+            'requests_per_hour' => 1000
+        ];
+        $this->retryConfig = $config['retry'] ?? [
+            'max_attempts' => 3, 
+            'backoff_multiplier' => 2
+        ];
+        $this->cacheConfig = $config['cache'] ?? [
+            'ttl_days' => 7, 
+            'enabled' => true
+        ];
+
+        if (!$this->apiKey) {
+            throw new \RuntimeException('ATTOM API key is not configured');
+        }
     }
 
     /**
@@ -45,13 +57,17 @@ class AttomService
         bool $forceFresh = false,
         ?Property $property = null
     ): ?array {
-        // Check rate limits
+        // Check rate limits before making request
         $this->checkRateLimit();
 
         // Check cache if enabled and not forcing fresh
         if ($cacheKey && $this->cacheConfig['enabled'] && !$forceFresh) {
             $cached = Cache::get($cacheKey);
             if ($cached !== null) {
+                Log::debug('ATTOM API cache hit', [
+                    'endpoint' => $endpoint,
+                    'cache_key' => $cacheKey,
+                ]);
                 return $cached;
             }
         }
@@ -91,7 +107,7 @@ class AttomService
                 
                 $hasResult = ($statusCode === 0 && $total > 0);
                 $noResult = ($statusCode === 400 && $statusMessage === 'SuccessWithoutResult');
-                $isError = (!$hasResult && !$noResult && $statusCode !== 0);
+                $isError = (!$hasResult && !$noResult);
 
                 // Log API call
                 $this->logApiCall(
@@ -102,13 +118,19 @@ class AttomService
                     $response->body(),
                     $httpStatusCode,
                     $responseTime,
-                    !$isError && !$noResult,
+                    $hasResult,
                     $isError ? $statusMessage : ($noResult ? 'No result found' : null),
                     $property
                 );
 
                 // Handle permanent errors (don't retry)
                 if ($this->isPermanentError($httpStatusCode, $statusCode, $statusMessage)) {
+                    Log::warning('ATTOM API permanent error', [
+                        'endpoint' => $endpoint,
+                        'http_status' => $httpStatusCode,
+                        'status_code' => $statusCode,
+                        'message' => $statusMessage,
+                    ]);
                     return null;
                 }
 
@@ -120,26 +142,39 @@ class AttomService
                         Log::warning("ATTOM API temporary error, retrying in {$delay}s", [
                             'endpoint' => $endpoint,
                             'attempt' => $attempt,
-                        'http_status' => $httpStatusCode,
-                        'status_code' => $statusCode,
-                    ]);
+                            'http_status' => $httpStatusCode,
+                            'status_code' => $statusCode,
+                        ]);
                         sleep($delay);
                         continue;
                     }
+                    Log::error('ATTOM API max retries exceeded', [
+                        'endpoint' => $endpoint,
+                        'attempts' => $attempt,
+                    ]);
                     return null;
                 }
 
                 // Success or no result
                 if ($noResult) {
+                    Log::info('ATTOM API returned no results', [
+                        'endpoint' => $endpoint,
+                        'params' => $params,
+                    ]);
                     return null;
                 }
 
                 $result = $data;
 
                 // Cache result if enabled
-                if ($cacheKey && $this->cacheConfig['enabled']) {
+                if ($cacheKey && $this->cacheConfig['enabled'] && $hasResult) {
                     $ttl = now()->addDays($this->cacheConfig['ttl_days'] ?? 7);
                     Cache::put($cacheKey, $result, $ttl);
+                    Log::debug('ATTOM API result cached', [
+                        'endpoint' => $endpoint,
+                        'cache_key' => $cacheKey,
+                        'ttl_days' => $this->cacheConfig['ttl_days'],
+                    ]);
                 }
 
                 return $result;
@@ -178,11 +213,12 @@ class AttomService
                     'endpoint' => $endpoint,
                     'message' => $e->getMessage(),
                     'attempt' => $attempt,
+                    'trace' => $e->getTraceAsString(),
                 ]);
 
                 if ($attempt >= $maxAttempts) {
-                return null;
-            }
+                    return null;
+                }
             }
         }
 
@@ -204,8 +240,9 @@ class AttomService
             return true;
         }
 
-        // Invalid parameters
-        if ($httpStatusCode === 400 && $statusCode !== null && $statusCode !== 0) {
+        // Invalid parameters (ATTOM status codes)
+        $permanentStatusCodes = [-8, -6, -5, -4, 36, 37, 38, 39];
+        if (in_array($statusCode, $permanentStatusCodes)) {
             return true;
         }
 
@@ -241,7 +278,7 @@ class AttomService
     protected function isRetryableException(\Exception $e): bool
     {
         // Network/timeout errors are retryable
-        $retryableMessages = ['timeout', 'connection', 'network', 'timed out'];
+        $retryableMessages = ['timeout', 'connection', 'network', 'timed out', 'could not resolve host'];
         $message = strtolower($e->getMessage());
         
         foreach ($retryableMessages as $keyword) {
@@ -291,9 +328,9 @@ class AttomService
         // If at limit, wait
         if (count(self::$requestTimestamps) >= $minuteLimit) {
             $oldestRequest = min(self::$requestTimestamps);
-            $waitTime = 60 - ($now - $oldestRequest);
+            $waitTime = 60 - ($now - $oldestRequest) + 1; // Add 1 second buffer
             if ($waitTime > 0) {
-                Log::info("ATTOM API rate limit reached, waiting {$waitTime}s");
+                Log::info("ATTOM API per-minute rate limit reached, waiting {$waitTime}s");
                 sleep($waitTime);
                 // Re-filter after wait
                 self::$requestTimestamps = array_filter(
@@ -313,11 +350,144 @@ class AttomService
         self::$hourlyRequestCount++;
     }
 
+    // ============================================================
+    // PUBLIC API METHODS - For fetching without storing
+    // ============================================================
+
+    /**
+     * Fetch raw property data without storing (for preview/testing)
+     */
+    public function fetchPropertyData(
+        string $address, 
+        ?string $city = null, 
+        ?string $state = null, 
+        ?string $zip = null,
+        bool $forceFresh = false
+    ): ?array {
+        $cacheKey = $this->cacheConfig['enabled'] 
+            ? "attom:fetch:raw:" . md5("{$address}:{$city}:{$state}:{$zip}")
+            : null;
+        
+        if ($forceFresh && $cacheKey) {
+            Cache::forget($cacheKey);
+        }
+        
+        $params = $this->buildAddressParams($address, $city, $state, $zip);
+
+        return $this->makeRequest(
+            '/propertyapi/v1.0.0/property/detail',
+            'GET',
+            $params,
+            $cacheKey,
+            $forceFresh,
+            null // No property to associate
+        );
+    }
+
+    /**
+     * Fetch property data using single full address string
+     */
+    public function fetchPropertyDataByFullAddress(
+        string $fullAddress,
+        bool $forceFresh = false
+    ): ?array {
+        $cacheKey = $this->cacheConfig['enabled'] 
+            ? "attom:fetch:full:" . md5($fullAddress)
+            : null;
+        
+        if ($forceFresh && $cacheKey) {
+            Cache::forget($cacheKey);
+        }
+        
+        $params = ['address' => trim($fullAddress)];
+
+        return $this->makeRequest(
+            '/propertyapi/v1.0.0/property/detail',
+            'GET',
+            $params,
+            $cacheKey,
+            $forceFresh,
+            null
+        );
+    }
+
+    /**
+     * Fetch and extract property data in one call (without saving to DB)
+     */
+    public function fetchAndExtractPropertyData(
+        string $address, 
+        ?string $city = null, 
+        ?string $state = null, 
+        ?string $zip = null,
+        bool $forceFresh = false
+    ): ?array {
+        $rawData = $this->fetchPropertyData($address, $city, $state, $zip, $forceFresh);
+        
+        if (!$rawData) {
+            return null;
+        }
+        
+        return $this->extractPropertyData($rawData);
+    }
+
+    /**
+     * Fetch multiple endpoints for a property (without saving)
+     */
+    public function fetchAllPropertyData(
+        string $address,
+        ?string $city = null,
+        ?string $state = null,
+        ?string $zip = null,
+        array $endpoints = ['detail', 'sale_history', 'events'],
+        bool $forceFresh = false
+    ): array {
+        $results = [
+            'detail' => null,
+            'sale_history' => null,
+            'comparable_sales' => null,
+            'events' => null,
+            'snapshot' => null,
+        ];
+
+        foreach ($endpoints as $endpoint) {
+            try {
+                $results[$endpoint] = match($endpoint) {
+                    'detail' => $this->fetchPropertyData($address, $city, $state, $zip, $forceFresh),
+                    'sale_history' => $this->getSaleHistory($address, $city, $state, $zip, $forceFresh, null),
+                    'comparable_sales' => $this->getComparableSales($address, $city, $state, $zip, [], $forceFresh, null),
+                    'events' => $this->getPropertyEvents($address, $city, $state, $zip, $forceFresh, null),
+                    'snapshot' => $this->getPropertySnapshot($address, $city, $state, $forceFresh, null),
+                    default => null,
+                };
+            } catch (\Exception $e) {
+                Log::warning("Failed to fetch {$endpoint} for address", [
+                    'address' => $address,
+                    'city' => $city,
+                    'state' => $state,
+                    'endpoint' => $endpoint,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $results;
+    }
+
+    // ============================================================
+    // PUBLIC API METHODS - For enriching properties
+    // ============================================================
+
     /**
      * Get property details from ATTOM API (enhanced, backward compatible)
      */
-    public function getPropertyDetails(string $address, ?string $city = null, ?string $state = null, ?string $zip = null, bool $forceFresh = false, ?Property $property = null): ?array
-    {
+    public function getPropertyDetails(
+        string $address, 
+        ?string $city = null, 
+        ?string $state = null, 
+        ?string $zip = null, 
+        bool $forceFresh = false, 
+        ?Property $property = null
+    ): ?array {
         $cacheKey = $this->cacheConfig['enabled'] 
             ? "attom:property:detail:" . md5("{$address}:{$city}:{$state}:{$zip}")
             : null;
@@ -326,23 +496,20 @@ class AttomService
             Cache::forget($cacheKey);
         }
         
-        $params = ['address1' => trim($address)];
-        if ($city && $state) {
-            $params['address2'] = trim($city) . ', ' . trim($state);
-        }
+        $params = $this->buildAddressParams($address, $city, $state, $zip);
 
         $data = $this->makeRequest(
             '/propertyapi/v1.0.0/property/detail',
-                    'GET',
-                    $params,
+            'GET',
+            $params,
             $cacheKey,
             $forceFresh,
             $property
         );
 
         if (!$data) {
-                return null;
-            }
+            return null;
+        }
 
         return $this->extractPropertyData($data);
     }
@@ -350,24 +517,37 @@ class AttomService
     /**
      * Get property detail (alias for backward compatibility)
      */
-    public function getPropertyDetail(string $address, ?string $city = null, ?string $state = null, ?string $zip = null, bool $forceFresh = false, ?Property $property = null): ?array
-    {
+    public function getPropertyDetail(
+        string $address, 
+        ?string $city = null, 
+        ?string $state = null, 
+        ?string $zip = null, 
+        bool $forceFresh = false, 
+        ?Property $property = null
+    ): ?array {
         return $this->getPropertyDetails($address, $city, $state, $zip, $forceFresh, $property);
     }
 
     /**
      * Get sale history for a property
      */
-    public function getSaleHistory(string $address, ?string $city = null, ?string $state = null, ?string $zip = null, bool $forceFresh = false, ?Property $property = null): ?array
-    {
+    public function getSaleHistory(
+        string $address, 
+        ?string $city = null, 
+        ?string $state = null, 
+        ?string $zip = null, 
+        bool $forceFresh = false, 
+        ?Property $property = null
+    ): ?array {
         $cacheKey = $this->cacheConfig['enabled']
             ? "attom:sale:history:" . md5("{$address}:{$city}:{$state}:{$zip}")
             : null;
 
-        $params = ['address1' => trim($address)];
-        if ($city && $state) {
-            $params['address2'] = trim($city) . ', ' . trim($state);
+        if ($forceFresh && $cacheKey) {
+            Cache::forget($cacheKey);
         }
+
+        $params = $this->buildAddressParams($address, $city, $state, $zip);
 
         return $this->makeRequest(
             '/propertyapi/v1.0.0/saleshistory/detail',
@@ -382,27 +562,35 @@ class AttomService
     /**
      * Get comparable sales for a property
      */
-    public function getComparableSales(string $address, ?string $city = null, ?string $state = null, ?string $zip = null, array $options = [], bool $forceFresh = false, ?Property $property = null): ?array
-    {
+    public function getComparableSales(
+        string $address, 
+        ?string $city = null, 
+        ?string $state = null, 
+        ?string $zip = null, 
+        array $options = [], 
+        bool $forceFresh = false, 
+        ?Property $property = null
+    ): ?array {
         $cacheKey = $this->cacheConfig['enabled']
             ? "attom:comps:" . md5("{$address}:{$city}:{$state}:{$zip}:" . json_encode($options))
             : null;
 
-        $params = ['address1' => trim($address)];
-        if ($city && $state) {
-            $params['address2'] = trim($city) . ', ' . trim($state);
+        if ($forceFresh && $cacheKey) {
+            Cache::forget($cacheKey);
         }
+
+        $params = $this->buildAddressParams($address, $city, $state, $zip);
 
         // Add optional parameters
         if (isset($options['radius'])) {
             $params['radius'] = $options['radius'];
         }
-        if (isset($options['maxResults'])) {
-            $params['maxResults'] = $options['maxResults'];
+        if (isset($options['pageSize'])) {
+            $params['pageSize'] = $options['pageSize'];
         }
 
         return $this->makeRequest(
-            '/propertyapi/v1.0.0/saleshistory/snapshot',
+            '/propertyapi/v1.0.0/sale/snapshot',
             'GET',
             $params,
             $cacheKey,
@@ -414,16 +602,23 @@ class AttomService
     /**
      * Get property events (permits, liens, ownership changes)
      */
-    public function getPropertyEvents(string $address, ?string $city = null, ?string $state = null, ?string $zip = null, bool $forceFresh = false, ?Property $property = null): ?array
-    {
+    public function getPropertyEvents(
+        string $address, 
+        ?string $city = null, 
+        ?string $state = null, 
+        ?string $zip = null, 
+        bool $forceFresh = false, 
+        ?Property $property = null
+    ): ?array {
         $cacheKey = $this->cacheConfig['enabled']
             ? "attom:events:" . md5("{$address}:{$city}:{$state}:{$zip}")
             : null;
 
-        $params = ['address1' => trim($address)];
-        if ($city && $state) {
-            $params['address2'] = trim($city) . ', ' . trim($state);
+        if ($forceFresh && $cacheKey) {
+            Cache::forget($cacheKey);
         }
+
+        $params = $this->buildAddressParams($address, $city, $state, $zip);
 
         return $this->makeRequest(
             '/propertyapi/v1.0.0/allevents/detail',
@@ -436,101 +631,24 @@ class AttomService
     }
 
     /**
-     * Search for properties by criteria
+     * Get property snapshot
      */
-    public function searchProperties(array $criteria, bool $forceFresh = false): ?array
-    {
+    public function getPropertySnapshot(
+        string $address, 
+        ?string $city = null, 
+        ?string $state = null, 
+        bool $forceFresh = false, 
+        ?Property $property = null
+    ): ?array {
         $cacheKey = $this->cacheConfig['enabled']
-            ? "attom:search:" . md5(json_encode($criteria))
+            ? "attom:property:snapshot:" . md5("{$address}:{$city}:{$state}")
             : null;
 
-        // Build search parameters
-        $params = [];
-        
-        // Address-based search
-        if (isset($criteria['address'])) {
-            $params['address1'] = $criteria['address'];
-        }
-        if (isset($criteria['city'])) {
-            $params['city'] = $criteria['city'];
-        }
-        if (isset($criteria['state'])) {
-            $params['state'] = $criteria['state'];
-        }
-        if (isset($criteria['zip'])) {
-            $params['postalcode'] = $criteria['zip'];
+        if ($forceFresh && $cacheKey) {
+            Cache::forget($cacheKey);
         }
 
-        // Property criteria
-        if (isset($criteria['minBeds'])) {
-            $params['minbeds'] = $criteria['minBeds'];
-        }
-        if (isset($criteria['maxBeds'])) {
-            $params['maxbeds'] = $criteria['maxBeds'];
-        }
-        if (isset($criteria['minBath'])) {
-            $params['minbath'] = $criteria['minBath'];
-        }
-        if (isset($criteria['maxBath'])) {
-            $params['maxbath'] = $criteria['maxBath'];
-        }
-        if (isset($criteria['minSquareFeet'])) {
-            $params['minuniversalsize'] = $criteria['minSquareFeet'];
-        }
-        if (isset($criteria['maxSquareFeet'])) {
-            $params['maxuniversalsize'] = $criteria['maxSquareFeet'];
-        }
-        if (isset($criteria['minYearBuilt'])) {
-            $params['minyearbuilt'] = $criteria['minYearBuilt'];
-        }
-        if (isset($criteria['maxYearBuilt'])) {
-            $params['maxyearbuilt'] = $criteria['maxYearBuilt'];
-        }
-        if (isset($criteria['propertyType'])) {
-            $params['propertytype'] = $criteria['propertyType'];
-        }
-
-        // Price range
-        if (isset($criteria['minPrice'])) {
-            $params['minassdttlvalue'] = $criteria['minPrice'];
-        }
-        if (isset($criteria['maxPrice'])) {
-            $params['maxassdttlvalue'] = $criteria['maxPrice'];
-        }
-
-        // Pagination
-        if (isset($criteria['page'])) {
-            $params['page'] = $criteria['page'];
-        }
-        if (isset($criteria['pageSize'])) {
-            $params['pagesize'] = $criteria['pageSize'];
-        }
-
-        return $this->makeRequest(
-            '/propertyapi/v1.0.0/property/basicprofile',
-            'GET',
-            $params,
-            $cacheKey,
-            $forceFresh
-        );
-    }
-
-    /**
-     * Get property sale snapshot (enhanced version)
-     */
-    public function getPropertySnapshot(string $address, ?string $city = null, ?string $state = null, bool $forceFresh = false, ?Property $property = null): ?array
-    {
-        $cacheKey = $this->cacheConfig['enabled']
-            ? "attom:sale:snapshot:" . md5("{$address}:{$city}:{$state}")
-            : null;
-
-        $params = ['address1' => $address];
-        if ($city) {
-            $params['city'] = $city;
-        }
-        if ($state) {
-            $params['state'] = $state;
-        }
+        $params = $this->buildAddressParams($address, $city, $state, null);
 
         return $this->makeRequest(
             '/propertyapi/v1.0.0/property/snapshot',
@@ -545,47 +663,275 @@ class AttomService
     /**
      * Get sale snapshot (backward compatibility alias)
      */
-    public function getSaleSnapshot(string $address, ?string $city = null, ?string $state = null): ?array
-    {
+    public function getSaleSnapshot(
+        string $address, 
+        ?string $city = null, 
+        ?string $state = null
+    ): ?array {
         return $this->getPropertySnapshot($address, $city, $state);
     }
 
     /**
-     * Extract relevant property data from ATTOM response
+     * Search for properties by criteria
      */
-    protected function extractPropertyData(array $data): array
+    public function searchProperties(array $criteria, bool $forceFresh = false): ?array
     {
-        $property = $data['property'] ?? [];
-        if (empty($property)) {
-            return [];
+        $cacheKey = $this->cacheConfig['enabled']
+            ? "attom:search:" . md5(json_encode($criteria))
+            : null;
+    
+        if ($forceFresh && $cacheKey) {
+            Cache::forget($cacheKey);
+        }
+    
+        // Build search parameters
+        $params = [];
+        
+        // Address-based search
+        if (isset($criteria['address'])) {
+            $params['address1'] = $criteria['address'];
+        }
+        if (isset($criteria['city'])) {
+            $params['address2'] = ($params['address2'] ?? '') . $criteria['city'];
+        }
+        if (isset($criteria['state'])) {
+            $params['address2'] = ($params['address2'] ?? '') . ', ' . $criteria['state'];
+        }
+        if (isset($criteria['zip'])) {
+            $params['postalcode'] = $criteria['zip'];
+        }
+    
+        // Property criteria
+        if (isset($criteria['minBeds'])) {
+            $params['minBeds'] = $criteria['minBeds'];
+        }
+        if (isset($criteria['maxBeds'])) {
+            $params['maxBeds'] = $criteria['maxBeds'];
+        }
+        if (isset($criteria['minBath'])) {
+            $params['minBathsTotal'] = $criteria['minBath'];
+        }
+        if (isset($criteria['maxBath'])) {
+            $params['maxBathsTotal'] = $criteria['maxBath'];
+        }
+        if (isset($criteria['minSquareFeet'])) {
+            $params['minUniversalSize'] = $criteria['minSquareFeet'];
+        }
+        if (isset($criteria['maxSquareFeet'])) {
+            $params['maxUniversalSize'] = $criteria['maxSquareFeet'];
+        }
+        if (isset($criteria['minYearBuilt'])) {
+            $params['minYearBuilt'] = $criteria['minYearBuilt'];
+        }
+        if (isset($criteria['maxYearBuilt'])) {
+            $params['maxYearBuilt'] = $criteria['maxYearBuilt'];
+        }
+        if (isset($criteria['propertyType'])) {
+            $params['propertyType'] = $criteria['propertyType'];
+        }
+    
+        // Price range
+        if (isset($criteria['minPrice'])) {
+            $params['minAssdTtlValue'] = $criteria['minPrice'];
+        }
+        if (isset($criteria['maxPrice'])) {
+            $params['maxAssdTtlValue'] = $criteria['maxPrice'];
+        }
+    
+        // Pagination
+        if (isset($criteria['page'])) {
+            $params['page'] = $criteria['page'];
+        }
+        if (isset($criteria['pageSize'])) {
+            $params['pageSize'] = $criteria['pageSize'];
+        }
+    
+        return $this->makeRequest(
+            '/propertyapi/v1.0.0/property/detail',
+            'GET',
+            $params,
+            $cacheKey,
+            $forceFresh
+        );
+    }
+    
+    // ============================================================
+    // HELPER METHODS
+    // ============================================================
+    
+    /**
+     * Build address parameters for API request
+     */
+    protected function buildAddressParams(
+        string $address, 
+        ?string $city = null, 
+        ?string $state = null, 
+        ?string $zip = null
+    ): array {
+        $params = ['address1' => trim($address)];
+        
+        if ($city && $state) {
+            $params['address2'] = trim($city) . ', ' . trim($state);
+            if ($zip) {
+                $params['address2'] .= ' ' . trim($zip);
+            }
+        } elseif ($city) {
+            $params['address2'] = trim($city);
+        } elseif ($state) {
+            $params['address2'] = trim($state);
         }
         
-        $propertyData = $property[0] ?? [];
-        $assessment = $propertyData['assessment'] ?? [];
-        $location = $propertyData['location'] ?? [];
-        $summary = $propertyData['summary'] ?? [];
-        $building = $propertyData['building'] ?? [];
-        $buildingSize = $building['size'] ?? [];
-        $buildingRooms = $building['rooms'] ?? [];
-
-        return [
-            'square_feet' => $buildingSize['bldgsize'] ?? $buildingSize['livingsize'] ?? $buildingSize['universalsize'] ?? null,
-            'lot_size' => ($propertyData['lot']['lotsize2'] ?? null) ? (int)($propertyData['lot']['lotsize2']) : null,
-            'year_built' => $summary['yearbuilt'] ?? null,
-            'bedrooms' => $buildingRooms['beds'] ?? null,
-            'bathrooms' => $buildingRooms['bathstotal'] ?? $buildingRooms['bathsfull'] ?? null,
-            'property_type' => $summary['propclass'] ?? $summary['propertyType'] ?? null,
-            'assessed_value' => $assessment['assessedvalue'] ?? null,
-            'market_value' => $assessment['marketvalue'] ?? null,
-            'tax_amount' => $assessment['taxamount'] ?? null,
-            'full_address' => $propertyData['address']['oneLine'] ?? null,
-            'latitude' => $location['latitude'] ? (float)$location['latitude'] : null,
-            'longitude' => $location['longitude'] ? (float)$location['longitude'] : null,
-            'attom_id' => $propertyData['identifier']['attomId'] ?? null,
-            'raw_data' => $data,
-        ];
+        return $params;
     }
+    
+/**
+ * Extract relevant property data from ATTOM response
+ */
+protected function extractPropertyData(array $data): array
+{
+    $property = $data['property'] ?? [];
+    if (empty($property)) {
+        return ['raw_data' => $data];
+    }
+    
+    // ATTOM returns array of properties, get first one
+    $propertyData = is_array($property) && isset($property[0]) ? $property[0] : $property;
+    
+    $assessment = $propertyData['assessment'] ?? [];
+    $location = $propertyData['location'] ?? [];
+    $summary = $propertyData['summary'] ?? [];
+    $building = $propertyData['building'] ?? [];
+    $buildingSize = $building['size'] ?? [];
+    $buildingRooms = $building['rooms'] ?? [];
+    $buildingInterior = $building['interior'] ?? [];
+    $buildingConstruction = $building['construction'] ?? [];
+    $lot = $propertyData['lot'] ?? [];
+    $area = $propertyData['area'] ?? [];
+    $utilities = $propertyData['utilities'] ?? [];
+    $address = $propertyData['address'] ?? [];
+    $identifier = $propertyData['identifier'] ?? [];
 
+    // Extract assessment data (handle nested structure)
+    $assessedData = $assessment['assessed'] ?? $assessment;
+    $marketData = $assessment['market'] ?? $assessment;
+    $taxData = $assessment['tax'] ?? $assessment;
+
+    return [
+        // Size information
+        'square_feet' => $buildingSize['bldgsize'] ?? $buildingSize['livingsize'] ?? $buildingSize['universalsize'] ?? null,
+        'gross_size' => $buildingSize['grosssize'] ?? null,
+        'living_size' => $buildingSize['livingsize'] ?? null,
+        'basement_size' => $buildingInterior['bsmtsize'] ?? null,
+        
+        // Lot information
+        'lot_size' => $lot['lotsize2'] ?? null, // in square feet
+        'lot_size_acres' => $lot['lotsize1'] ?? null, // in acres
+        'lot_depth' => $lot['depth'] ?? null,
+        'lot_frontage' => $lot['frontage'] ?? null,
+        'lot_number' => $lot['lotnum'] ?? null,
+        
+        // Basic property info
+        'year_built' => $summary['yearbuilt'] ?? null,
+        'bedrooms' => $buildingRooms['beds'] ?? null,
+        
+        // Bathroom information - FIXED with correct casing
+        'bathrooms' => $buildingRooms['bathstotal'] ?? null, // Total bathrooms
+        'bathrooms_full' => $buildingRooms['bathsfull'] ?? null, // Full baths
+        'bathrooms_partial' => $buildingRooms['bathspartial'] ?? null, // Half baths
+        'bathrooms_total_decimal' => $this->calculateBathroomDecimal($buildingRooms), // e.g., 2.5
+        
+        // Property classification
+        'property_type' => $summary['propertyType'] ?? $summary['proptype'] ?? $summary['propclass'] ?? null,
+        'property_subtype' => $summary['propsubtype'] ?? null,
+        'property_class' => $summary['propclass'] ?? null,
+        'property_indicator' => $summary['propIndicator'] ?? null,
+        'property_land_use' => $summary['propLandUse'] ?? null,
+        
+        // Valuation data
+        'assessed_value' => $assessedData['assdttlvalue'] ?? $assessedData['assdTtlValue'] ?? null,
+        'assessed_land_value' => $assessedData['assdlandvalue'] ?? $assessedData['assdLandValue'] ?? null,
+        'assessed_improvement_value' => $assessedData['assdimprvalue'] ?? $assessedData['assdImprValue'] ?? null,
+        'market_value' => $marketData['mktttlvalue'] ?? $marketData['mktTtlValue'] ?? null,
+        'market_land_value' => $marketData['mktlandvalue'] ?? $marketData['mktLandValue'] ?? null,
+        'market_improvement_value' => $marketData['mktimprvalue'] ?? $marketData['mktImprValue'] ?? null,
+        
+        // Tax information
+        'tax_amount' => $taxData['taxamt'] ?? $taxData['taxAmt'] ?? null,
+        'tax_year' => $taxData['taxyear'] ?? $taxData['taxYear'] ?? null,
+        'tax_code_area' => $area['taxcodearea'] ?? null,
+        
+        // Building details
+        'rooms_total' => $buildingRooms['roomsTotal'] ?? null,
+        'stories' => $building['summary']['levels'] ?? null,
+        'building_type' => $building['summary']['bldgType'] ?? null,
+        'architectural_style' => $building['summary']['archStyle'] ?? null,
+        'construction_type' => $buildingConstruction['constructiontype'] ?? null,
+        'construction_condition' => $buildingConstruction['condition'] ?? null,
+        'construction_quality' => $building['summary']['quality'] ?? null,
+        'frame_type' => $buildingConstruction['frameType'] ?? null,
+        'wall_type' => $buildingConstruction['wallType'] ?? null,
+        'basement_type' => $buildingInterior['bsmttype'] ?? null,
+        
+        // Utilities
+        'heating_type' => $utilities['heatingtype'] ?? null,
+        'cooling_type' => $utilities['coolingtype'] ?? null,
+        'pool_type' => $lot['pooltype'] ?? null,
+        
+        // Area information
+        'subdivision' => $area['subdname'] ?? null,
+        'municipality' => $area['munname'] ?? null,
+        'county' => $area['countrysecsubd'] ?? null,
+        'school_district' => $area['schooldist'] ?? null,
+        
+        // Owner information
+        'owner_occupied' => $summary['absenteeInd'] === 'OWNER OCCUPIED',
+        'absentee_indicator' => $summary['absenteeInd'] ?? null,
+        
+        // Address and location
+        'full_address' => $address['oneLine'] ?? null,
+        'street_address' => $address['line1'] ?? null,
+        'city_state_zip' => $address['line2'] ?? null,
+        'city' => $address['locality'] ?? null,
+        'state' => $address['countrySubd'] ?? null,
+        'zip_code' => $address['postal1'] ?? null,
+        'zip_plus_4' => $address['postal2'] ?? null,
+        'carrier_route' => $address['postal3'] ?? null,
+        'match_code' => $address['matchCode'] ?? null,
+        
+        'latitude' => isset($location['latitude']) ? (float)$location['latitude'] : null,
+        'longitude' => isset($location['longitude']) ? (float)$location['longitude'] : null,
+        'location_accuracy' => $location['accuracy'] ?? null,
+        
+        // Identifiers
+        'attom_id' => $identifier['attomId'] ?? $identifier['Id'] ?? null,
+        'apn' => $identifier['apn'] ?? null,
+        'fips' => $identifier['fips'] ?? null,
+        
+        // Metadata
+        'last_modified' => $propertyData['vintage']['lastModified'] ?? null,
+        'published_date' => $propertyData['vintage']['pubDate'] ?? null,
+        
+        // Keep raw data for reference
+        'raw_data' => $data,
+    ];
+}
+
+    /**
+     * Calculate bathroom decimal representation (e.g., 2.5 for 2 full + 1 half)
+     */
+    protected function calculateBathroomDecimal(array $buildingRooms): ?float
+    {
+        $full = $buildingRooms['bathsfull'] ?? 0;
+        $partial = $buildingRooms['bathspartial'] ?? 0;
+        
+        if ($full === 0 && $partial === 0) {
+            return null;
+        }
+        
+        // Each partial bath counts as 0.5
+        return $full + ($partial * 0.5);
+    }
+    
     /**
      * Log API call to database
      */
@@ -608,14 +954,68 @@ class AttomService
                 'method' => $method,
                 'status_code' => $statusCode,
                 'request_body' => json_encode($requestBody),
-                'response_body' => $responseBody,
+                'response_body' => $responseBody ? (strlen($responseBody) > 65000 ? substr($responseBody, 0, 65000) : $responseBody) : null,
                 'response_time_ms' => $responseTime,
                 'success' => $success,
-                'error_message' => $errorMessage,
+                'error_message' => $errorMessage ? (strlen($errorMessage) > 500 ? substr($errorMessage, 0, 500) : $errorMessage) : null,
                 'property_id' => $property?->id,
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to log API call', ['error' => $e->getMessage()]);
+            Log::error('Failed to log API call', [
+                'error' => $e->getMessage(),
+                'service' => $service,
+                'endpoint' => $endpoint,
+            ]);
         }
+    }
+    
+    /**
+     * Clear all ATTOM caches
+     */
+    public function clearCache(): void
+    {
+        $patterns = [
+            'attom:property:*',
+            'attom:sale:*',
+            'attom:fetch:*',
+            'attom:comps:*',
+            'attom:events:*',
+            'attom:search:*',
+        ];
+    
+        foreach ($patterns as $pattern) {
+            try {
+                Cache::forget($pattern);
+            } catch (\Exception $e) {
+                Log::warning('Failed to clear cache pattern', [
+                    'pattern' => $pattern,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    
+        Log::info('ATTOM API cache cleared');
+    }
+    
+    /**
+     * Get current rate limit status
+     */
+    public function getRateLimitStatus(): array
+    {
+        $now = time();
+        $oneMinuteAgo = $now - 60;
+        
+        $recentRequests = array_filter(
+            self::$requestTimestamps,
+            fn($timestamp) => $timestamp > $oneMinuteAgo
+        );
+    
+        return [
+            'requests_last_minute' => count($recentRequests),
+            'minute_limit' => $this->rateLimitConfig['requests_per_minute'],
+            'requests_this_hour' => self::$hourlyRequestCount,
+            'hour_limit' => $this->rateLimitConfig['requests_per_hour'],
+            'hour_resets_at' => self::$hourlyResetTime ? date('Y-m-d H:i:s', self::$hourlyResetTime) : null,
+        ];
     }
 }

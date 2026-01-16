@@ -12,6 +12,7 @@ use App\Services\PropertyService;
 use App\Services\PropertyEnrichmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
 #[OA\Tag(name: "Properties")]
@@ -470,6 +471,327 @@ class PropertyController extends Controller
                 'status' => 'queued',
             ],
         ], 202);
+    }
+
+    /**
+ * Preview property data from external APIs without storing
+ */
+#[OA\Post(
+    path: "/properties/preview",
+    summary: "Preview property data",
+    description: "Fetch property data from external APIs (ATTOM) without creating a property record. Useful for previewing data before creating a listing.",
+    tags: ["Properties"],
+    security: [["bearerAuth" => []]],
+    requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\MediaType(
+            mediaType: "application/json",
+            schema: new OA\Schema(
+                required: ["address"],
+                properties: [
+                    new OA\Property(property: "address", type: "string", example: "123 Main St"),
+                    new OA\Property(property: "city", type: "string", example: "Denver"),
+                    new OA\Property(property: "state", type: "string", example: "CO"),
+                    new OA\Property(property: "zip_code", type: "string", example: "80202"),
+                    new OA\Property(
+                        property: "endpoints", 
+                        type: "array", 
+                        items: new OA\Items(type: "string", enum: ["detail", "sale_history", "comparable_sales", "events", "snapshot"]),
+                        example: ["detail", "sale_history"]
+                    ),
+                    new OA\Property(property: "force_fresh", type: "boolean", example: false),
+                    new OA\Property(property: "extract", type: "boolean", example: true, description: "Return extracted/formatted data instead of raw API response"),
+                ]
+            )
+        )
+    ),
+    responses: [
+        new OA\Response(response: 200, description: "Property data preview"),
+        new OA\Response(response: 401, description: "Unauthenticated"),
+        new OA\Response(response: 422, description: "Validation error"),
+    ]
+)]
+public function preview(Request $request): JsonResponse
+{
+    $validated = $request->validate([
+        'address' => 'required|string|max:255',
+        'city' => 'nullable|string|max:100',
+        'state' => 'nullable|string|max:2',
+        'zip_code' => 'nullable|string|max:10',
+        'endpoints' => 'nullable|array',
+        'endpoints.*' => 'string|in:detail,sale_history,comparable_sales,events,snapshot',
+        'force_fresh' => 'nullable|boolean',
+        'extract' => 'nullable|boolean',
+    ]);
+
+    $address = $validated['address'];
+    $city = $validated['city'] ?? null;
+    $state = $validated['state'] ?? null;
+    $zipCode = $validated['zip_code'] ?? null;
+    $endpoints = $validated['endpoints'] ?? ['detail'];
+    $forceFresh = $validated['force_fresh'] ?? false;
+    $extract = $validated['extract'] ?? true;
+
+    // Validate address is complete enough
+    if (!$this->enrichmentService->validateAddress($address, $city, $state, $zipCode)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid or incomplete address provided',
+        ], 422);
+    }
+
+    try {
+        if ($extract && count($endpoints) === 1 && $endpoints[0] === 'detail') {
+            // Simple case: just get extracted detail data
+            $data = $this->enrichmentService->fetchAndExtractPropertyData(
+                $address,
+                $city,
+                $state,
+                $zipCode,
+                $forceFresh
+            );
+        } else {
+            // Complex case: multiple endpoints or raw data
+            $data = $this->enrichmentService->fetchPropertyData(
+                $address,
+                $city,
+                $state,
+                $zipCode,
+                $endpoints,
+                $forceFresh
+            );
+        }
+
+        if (empty($data)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No property data found for the given address',
+                'data' => null,
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Property data fetched successfully',
+            'data' => [
+                'address' => $this->enrichmentService->formatAddress($address, $city, $state, $zipCode),
+                'property_data' => $data,
+            ],
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Property preview failed', [
+            'address' => $address,
+            'city' => $city,
+            'state' => $state,
+            'zip_code' => $zipCode,
+            'error' => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to fetch property data',
+            'error' => config('app.debug') ? $e->getMessage() : 'An error occurred while fetching property data',
+        ], 500);
+    }
+}
+    /**
+ * Lookup property data by address
+ */
+#[OA\Get(
+    path: "/properties/lookup",
+    summary: "Lookup property by address",
+    description: "Quick lookup of property data. Accepts either full address string OR separate address components.",
+    tags: ["Properties"],
+    security: [["bearerAuth" => []]],
+    parameters: [
+        new OA\Parameter(
+            name: "address",
+            in: "query",
+            required: false,
+            schema: new OA\Schema(type: "string"),
+            example: "468 SEQUOIA DR, SMYRNA, DE 19977",
+            description: "Full address string (alternative to using separate fields)"
+        ),
+        new OA\Parameter(
+            name: "street",
+            in: "query",
+            required: false,
+            schema: new OA\Schema(type: "string"),
+            example: "468 SEQUOIA DR"
+        ),
+        new OA\Parameter(
+            name: "city",
+            in: "query",
+            required: false,
+            schema: new OA\Schema(type: "string"),
+            example: "SMYRNA"
+        ),
+        new OA\Parameter(
+            name: "state",
+            in: "query",
+            required: false,
+            schema: new OA\Schema(type: "string"),
+            example: "DE"
+        ),
+        new OA\Parameter(
+            name: "zip",
+            in: "query",
+            required: false,
+            schema: new OA\Schema(type: "string"),
+            example: "19977"
+        ),
+        new OA\Parameter(
+            name: "force_fresh",
+            in: "query",
+            required: false,
+            schema: new OA\Schema(type: "boolean", default: false)
+        ),
+    ],
+    responses: [
+        new OA\Response(response: 200, description: "Property data found"),
+        new OA\Response(response: 404, description: "Property not found"),
+        new OA\Response(response: 422, description: "Validation error"),
+    ]
+)]
+public function lookup(Request $request): JsonResponse
+{
+    $validated = $request->validate([
+        'address' => 'required_without_all:street,city,state|string|max:500',
+        'street' => 'required_without:address|string|max:255',
+        'city' => 'nullable|string|max:100',
+        'state' => 'nullable|string|max:2',
+        'zip' => 'nullable|string|max:10',
+        'force_fresh' => 'nullable|boolean',
+    ]);
+
+    $forceFresh = $validated['force_fresh'] ?? false;
+
+    // If full address provided, parse it
+    if (!empty($validated['address'])) {
+        $addressParts = $this->parseAddress($validated['address']);
+        $street = $addressParts['street'];
+        $city = $addressParts['city'];
+        $state = $addressParts['state'];
+        $zip = $addressParts['zip'];
+    } else {
+        // Use separate components
+        $street = $validated['street'];
+        $city = $validated['city'] ?? null;
+        $state = $validated['state'] ?? null;
+        $zip = $validated['zip'] ?? null;
+    }
+
+    if (!$street) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Street address is required',
+        ], 422);
+    }
+
+    try {
+        $data = $this->enrichmentService->fetchAndExtractPropertyData(
+            $street,
+            $city,
+            $state,
+            $zip,
+            $forceFresh
+        );
+
+        if (empty($data)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No property found for the given address',
+                'searched_address' => [
+                    'street' => $street,
+                    'city' => $city,
+                    'state' => $state,
+                    'zip' => $zip,
+                ],
+            ], 404);
+        }
+
+        // Remove raw_data before returning
+        unset($data['raw_data']);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Property data found',
+            'data' => $data,
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Property lookup failed', [
+            'street' => $street,
+            'city' => $city,
+            'state' => $state,
+            'zip' => $zip,
+            'error' => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to lookup property',
+            'error' => config('app.debug') ? $e->getMessage() : 'An error occurred while looking up property',
+        ], 500);
+    }
+}
+
+    /**
+     * Parse a full address string into components
+     */
+    protected function parseAddress(string $fullAddress): array
+    {
+        // Initialize result
+        $result = [
+            'street' => null,
+            'city' => null,
+            'state' => null,
+            'zip' => null,
+        ];
+
+        // Clean the address
+        $fullAddress = trim($fullAddress);
+
+        // Try to extract ZIP code (5 digits or 5+4 format)
+        if (preg_match('/\b(\d{5}(?:-\d{4})?)\b/', $fullAddress, $zipMatch)) {
+            $result['zip'] = $zipMatch[1];
+            $fullAddress = str_replace($zipMatch[0], '', $fullAddress);
+        }
+
+        // Split by comma
+        $parts = array_map('trim', explode(',', $fullAddress));
+        $parts = array_filter($parts); // Remove empty parts
+
+        if (count($parts) >= 3) {
+            // Format: "Street, City, State"
+            $result['street'] = $parts[0];
+            $result['city'] = $parts[1];
+
+            // Last part might be "State ZIP" or just "State"
+            $lastPart = $parts[2];
+
+            // Extract state (2 letter code)
+            if (preg_match('/\b([A-Z]{2})\b/', strtoupper($lastPart), $stateMatch)) {
+                $result['state'] = $stateMatch[1];
+            }
+        } elseif (count($parts) === 2) {
+            // Format: "Street, City State" or "Street, State"
+            $result['street'] = $parts[0];
+
+            // Try to parse "City State" from second part
+            $secondPart = $parts[1];
+            if (preg_match('/^(.+?)\s+([A-Z]{2})$/i', $secondPart, $cityStateMatch)) {
+                $result['city'] = trim($cityStateMatch[1]);
+                $result['state'] = strtoupper($cityStateMatch[2]);
+            } else {
+                // Assume it's just city
+                $result['city'] = $secondPart;
+            }
+        } elseif (count($parts) === 1) {
+            // Only street address provided
+            $result['street'] = $parts[0];
+        }
+
+        return $result;
     }
 
     /**

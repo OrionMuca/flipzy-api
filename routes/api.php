@@ -45,6 +45,9 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
     // Buy Box routes (require auth)
     Route::get('/buy-box', [\App\Http\Controllers\BuyBoxController::class, 'show']);
     Route::put('/buy-box', [\App\Http\Controllers\BuyBoxController::class, 'update']);
+
+    Route::post('/properties/search/preview', [\App\Http\Controllers\PropertyController::class, 'preview']);
+    Route::get('/properties/search/address', [\App\Http\Controllers\PropertyController::class, 'lookup']);
     
     // Property CRUD (create, update, delete require auth)
     Route::post('/properties', [\App\Http\Controllers\PropertyController::class, 'store']);
