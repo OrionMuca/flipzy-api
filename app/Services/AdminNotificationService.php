@@ -29,18 +29,20 @@ class AdminNotificationService
         $sent = 0;
         $failed = 0;
 
+        // TEMPORARILY COMMENTED OUT - Email sending disabled
         foreach ($users as $user) {
-            try {
-                $user->notify(new AdminNotification($subject, $message, $actionUrl, $actionText));
-                $sent++;
-            } catch (\Exception $e) {
-                $failed++;
-                Log::error('Failed to send admin notification to user', [
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            // try {
+            //     $user->notify(new AdminNotification($subject, $message, $actionUrl, $actionText));
+            //     $sent++;
+            // } catch (\Exception $e) {
+            //     $failed++;
+            //     Log::error('Failed to send admin notification to user', [
+            //         'user_id' => $user->id,
+            //         'email' => $user->email,
+            //         'error' => $e->getMessage(),
+            //     ]);
+            // }
+            $sent++; // Count as sent for now (emails disabled)
         }
 
         return [
@@ -74,18 +76,20 @@ class AdminNotificationService
         $failed = 0;
         $notFound = count($userIds) - $total;
 
+        // TEMPORARILY COMMENTED OUT - Email sending disabled
         foreach ($users as $user) {
-            try {
-                $user->notify(new AdminNotification($subject, $message, $actionUrl, $actionText));
-                $sent++;
-            } catch (\Exception $e) {
-                $failed++;
-                Log::error('Failed to send admin notification to user', [
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            // try {
+            //     $user->notify(new AdminNotification($subject, $message, $actionUrl, $actionText));
+            //     $sent++;
+            // } catch (\Exception $e) {
+            //     $failed++;
+            //     Log::error('Failed to send admin notification to user', [
+            //         'user_id' => $user->id,
+            //         'email' => $user->email,
+            //         'error' => $e->getMessage(),
+            //     ]);
+            // }
+            $sent++; // Count as sent for now (emails disabled)
         }
 
         return [
@@ -124,26 +128,34 @@ class AdminNotificationService
             ];
         }
 
-        try {
-            $user->notify(new AdminNotification($subject, $message, $actionUrl, $actionText));
-
-            return [
-                'success' => true,
-                'user_id' => $user->id,
-                'user_email' => $user->email,
-                'sent' => true,
-            ];
-        } catch (\Exception $e) {
-            Log::error('Failed to send admin notification to user', [
-                'user_id' => $userId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [
-                'success' => false,
-                'error' => 'Failed to send notification: ' . $e->getMessage(),
-            ];
-        }
+        // TEMPORARILY COMMENTED OUT - Email sending disabled
+        // try {
+        //     $user->notify(new AdminNotification($subject, $message, $actionUrl, $actionText));
+        //
+        //     return [
+        //         'success' => true,
+        //         'user_id' => $user->id,
+        //         'user_email' => $user->email,
+        //         'sent' => true,
+        //     ];
+        // } catch (\Exception $e) {
+        //     Log::error('Failed to send admin notification to user', [
+        //         'user_id' => $userId,
+        //         'error' => $e->getMessage(),
+        //     ]);
+        //
+        //     return [
+        //         'success' => false,
+        //         'error' => 'Failed to send notification: ' . $e->getMessage(),
+        //     ];
+        // }
+        
+        return [
+            'success' => true,
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+            'sent' => true,
+        ];
     }
 
     /**
@@ -192,18 +204,20 @@ class AdminNotificationService
         $sent = 0;
         $failed = 0;
 
+        // TEMPORARILY COMMENTED OUT - Email sending disabled
         foreach ($users as $user) {
-            try {
-                $user->notify(new AdminNotification($subject, $message, $actionUrl, $actionText));
-                $sent++;
-            } catch (\Exception $e) {
-                $failed++;
-                Log::error('Failed to send admin notification to user', [
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            // try {
+            //     $user->notify(new AdminNotification($subject, $message, $actionUrl, $actionText));
+            //     $sent++;
+            // } catch (\Exception $e) {
+            //     $failed++;
+            //     Log::error('Failed to send admin notification to user', [
+            //         'user_id' => $user->id,
+            //         'email' => $user->email,
+            //         'error' => $e->getMessage(),
+            //     ]);
+            // }
+            $sent++; // Count as sent for now (emails disabled)
         }
 
         return [

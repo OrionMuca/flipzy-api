@@ -132,22 +132,23 @@ class CreateAccountsFromWaitingList extends Command
                     // Mark entry as account created
                     $entry->markAccountCreated();
 
+                    // TEMPORARILY COMMENTED OUT - Email sending disabled
                     // Send account created email
-                    try {
-                        Mail::to($user->email)->send(new AccountCreatedMail(
-                            $user,
-                            $tempPassword,
-                            $token,
-                            '' // Will be constructed in Mailable
-                        ));
-                    } catch (\Exception $e) {
-                        Log::warning('Failed to send account created email', [
-                            'user_id' => $user->id,
-                            'email' => $user->email,
-                            'error' => $e->getMessage(),
-                        ]);
-                        // Continue even if email fails
-                    }
+                    // try {
+                    //     Mail::to($user->email)->send(new AccountCreatedMail(
+                    //         $user,
+                    //         $tempPassword,
+                    //         $token,
+                    //         '' // Will be constructed in Mailable
+                    //     ));
+                    // } catch (\Exception $e) {
+                    //     Log::warning('Failed to send account created email', [
+                    //         'user_id' => $user->id,
+                    //         'email' => $user->email,
+                    //         'error' => $e->getMessage(),
+                    //     ]);
+                    //     // Continue even if email fails
+                    // }
 
                     // Get frontend URL for display
                     $frontendUrl = config('app.frontend_url');

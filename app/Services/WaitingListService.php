@@ -129,17 +129,18 @@ class WaitingListService
                 $this->couponService->applyCoupon($coupon);
             }
 
+            // TEMPORARILY COMMENTED OUT - Email sending disabled
             // Send welcome email
-            try {
-                Mail::to($entry->email)->send(new WaitingListWelcomeMail($entry));
-            } catch (\Exception $e) {
-                Log::warning('Failed to send waiting list welcome email', [
-                    'entry_id' => $entry->id,
-                    'email' => $entry->email,
-                    'error' => $e->getMessage(),
-                ]);
-                // Don't fail registration if email fails
-            }
+            // try {
+            //     Mail::to($entry->email)->send(new WaitingListWelcomeMail($entry));
+            // } catch (\Exception $e) {
+            //     Log::warning('Failed to send waiting list welcome email', [
+            //         'entry_id' => $entry->id,
+            //         'email' => $entry->email,
+            //         'error' => $e->getMessage(),
+            //     ]);
+            //     // Don't fail registration if email fails
+            // }
 
             return [
                 'success' => true,

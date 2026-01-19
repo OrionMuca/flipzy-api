@@ -95,16 +95,17 @@ class AuthController extends Controller
         $frontendUrl = config('app.frontend_url');
         $verificationUrl = rtrim($frontendUrl, '/') . '/verify-email?token=' . $verificationToken . '&email=' . urlencode($user->email);
         
-        try {
-            Mail::to($user->email)->send(new EmailVerificationMail($user, $verificationUrl));
-        } catch (\Exception $e) {
-            Log::warning('Failed to send email verification', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'error' => $e->getMessage(),
-            ]);
-            // Don't fail registration if email fails
-        }
+        // TEMPORARILY COMMENTED OUT - Email sending disabled
+        // try {
+        //     Mail::to($user->email)->send(new EmailVerificationMail($user, $verificationUrl));
+        // } catch (\Exception $e) {
+        //     Log::warning('Failed to send email verification', [
+        //         'user_id' => $user->id,
+        //         'email' => $user->email,
+        //         'error' => $e->getMessage(),
+        //     ]);
+        //     // Don't fail registration if email fails
+        // }
 
         // Generate token using password grant
         try {
@@ -213,16 +214,17 @@ class AuthController extends Controller
             $frontendUrl = config('app.frontend_url');
             $verificationUrl = rtrim($frontendUrl, '/') . '/verify-email?token=' . $verificationToken . '&email=' . urlencode($user->email);
             
-            try {
-                Mail::to($user->email)->send(new EmailVerificationMail($user, $verificationUrl));
-            } catch (\Exception $e) {
-                Log::warning('Failed to resend email verification on login', [
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'error' => $e->getMessage(),
-                ]);
-                // Continue with login even if email fails
-            }
+            // TEMPORARILY COMMENTED OUT - Email sending disabled
+            // try {
+            //     Mail::to($user->email)->send(new EmailVerificationMail($user, $verificationUrl));
+            // } catch (\Exception $e) {
+            //     Log::warning('Failed to resend email verification on login', [
+            //         'user_id' => $user->id,
+            //         'email' => $user->email,
+            //         'error' => $e->getMessage(),
+            //     ]);
+            //     // Continue with login even if email fails
+            // }
         }
 
         try {
@@ -372,8 +374,9 @@ class AuthController extends Controller
         // Note: PasswordResetMail will construct the frontend URL itself
         // We pass the token here, but the Mailable will build the frontend URL
 
+        // TEMPORARILY COMMENTED OUT - Email sending disabled
         // Send password reset email
-        Mail::to($user->email)->send(new PasswordResetMail($user, $token, ''));
+        // Mail::to($user->email)->send(new PasswordResetMail($user, $token, ''));
 
         return response()->json([
             'success' => true,

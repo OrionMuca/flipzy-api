@@ -86,21 +86,22 @@ class EmailCampaignService
         $sent = 0;
         $failed = 0;
 
+        // TEMPORARILY COMMENTED OUT - Email sending disabled
         // Send notifications
-        foreach ($recipients as $entry) {
-            try {
-                $entry->notify(new WaitingListCampaignNotification($campaign));
-                $sent++;
-            } catch (\Exception $e) {
-                $failed++;
-                Log::error('Failed to send campaign notification', [
-                    'campaign_id' => $campaign->id,
-                    'entry_id' => $entry->id,
-                    'email' => $entry->email,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
+        // foreach ($recipients as $entry) {
+        //     try {
+        //         $entry->notify(new WaitingListCampaignNotification($campaign));
+        //         $sent++;
+        //     } catch (\Exception $e) {
+        //         $failed++;
+        //         Log::error('Failed to send campaign notification', [
+        //             'campaign_id' => $campaign->id,
+        //             'entry_id' => $entry->id,
+        //             'email' => $entry->email,
+        //             'error' => $e->getMessage(),
+        //         ]);
+        //     }
+        // }
 
         // Update campaign
         $campaign->update([
