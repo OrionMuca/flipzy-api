@@ -19,7 +19,19 @@ services:
           memory: 800M
     working_dir: /var/www/html
     volumes:
-      - ./storage:/var/www/html/storage
+      # Storage configuration:
+      # - Local development: Uses ./storage (default)
+      # - Production: Uncomment the DigitalOcean volume mount below and comment out ./storage
+      
+      # Local development (default)
+      #- ./storage:/var/www/html/storage
+      
+      # Production: DigitalOcean volume for images (uncomment for production)
+      - /mnt/volume_atl1_01/app/public:/var/www/html/storage/app/public
+      - ./storage/app/private:/var/www/html/storage/app/private
+      - ./storage/framework:/var/www/html/storage/framework
+      - ./storage/logs:/var/www/html/storage/logs
+      
       - ./bootstrap/cache:/var/www/html/bootstrap/cache
       - ./.env:/var/www/html/.env
     environment:

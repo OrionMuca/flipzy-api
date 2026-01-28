@@ -40,7 +40,16 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
+            'root' => env('STORAGE_PATH', storage_path('app/public')),
+            'url' => env('APP_URL').'/storage',
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
+        'volume' => [
+            'driver' => 'local',
+            'root' => env('STORAGE_VOLUME_PATH', '/mnt/volume_atl1_01/app/public'),
             'url' => env('APP_URL').'/storage',
             'visibility' => 'public',
             'throw' => false,
@@ -74,7 +83,7 @@ return [
     */
 
     'links' => [
-        public_path('storage') => storage_path('app/public'),
+        public_path('storage') => env('STORAGE_PATH', storage_path('app/public')),
     ],
 
 ];
