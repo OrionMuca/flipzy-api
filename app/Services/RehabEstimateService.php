@@ -447,6 +447,7 @@ IMPORTANT: Return ONLY valid JSON, no additional text or markdown formatting.";
         return "rehab_estimate_{$property->id}_{$dataHash}";
     }
 
+
     /**
      * Clear cache for property
      */
@@ -465,6 +466,212 @@ IMPORTANT: Return ONLY valid JSON, no additional text or markdown formatting.";
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get();
+    }
+
+    /**
+     * Generate rehab estimate from property data (for pre-submission/preview)
+     * This doesn't require a Property model - works with array data from ATTOM lookup
+     */
+    public function generateEstimateFromData(
+        array $propertyData,
+        ?User $user = null,
+        array $options = []
+    ): array {
+        $useCalculations = $options['use_calculations'] ?? false;
+        $forceRefresh = $options['force_refresh'] ?? false;
+
+        // Create cache key based on property characteristics
+        $cacheKey = $this->getPreviewCacheKey($propertyData);
+
+        // Check cache first (unless force refresh)
+        if (!$forceRefresh) {
+            $cachedEstimate = Cache::get($cacheKey);
+            if ($cachedEstimate) {
+                Log::info('Returning cached preview estimate', ['cache_key' => $cacheKey]);
+                return $cachedEstimate;
+            }
+        }
+
+        // If calculations are forced or API key is not configured, use calculation fallback
+        if ($useCalculations || !$this->isApiKeyConfigured()) {
+            Log::info('Using calculation-based preview estimate', [
+                'reason' => $useCalculations ? 'forced' : 'openai_key_missing',
+            ]);
+            $estimate = $this->generateEstimateWithCalculationsFromData($propertyData, $user);
+            
+            // Cache the result
+            Cache::put($cacheKey, $estimate, now()->addDays($this->cacheDuration));
+            
+            return $estimate;
+        }
+
+        $model = $options['model'] ?? config('services.openai.model', $this->defaultModel);
+
+        // Build prompt
+        $prompt = $this->buildPrompt($propertyData);
+
+        try {
+            // Call OpenAI API
+            $response = $this->callOpenAI($prompt, $model, $propertyData);
+
+            // Parse response
+            $parsedResponse = $this->parseAIResponse($response);
+
+            // Extract cost breakdown
+            $costBreakdown = $this->extractCostBreakdown($parsedResponse);
+
+            // Build estimate result (no database record for preview)
+            $estimate = [
+                'estimated_cost' => $costBreakdown['total_cost'] ?? null,
+                'breakdown' => $costBreakdown['breakdown'] ?? [],
+                'labor_percentage' => $costBreakdown['labor_percentage'] ?? null,
+                'materials_percentage' => $costBreakdown['materials_percentage'] ?? null,
+                'timeline_weeks' => $costBreakdown['timeline_weeks'] ?? null,
+                'risk_factors' => $costBreakdown['risk_factors'] ?? [],
+                'notes' => $costBreakdown['notes'] ?? '',
+                'confidence' => $costBreakdown['confidence'] ?? 'medium',
+                'model_used' => $model,
+                'tokens_used' => $response['tokens_used'] ?? null,
+                'property_data' => $propertyData,
+                'is_preview' => true,
+                'cached_at' => now()->toIso8601String(),
+            ];
+
+            // Cache the estimate
+            Cache::put($cacheKey, $estimate, now()->addDays($this->cacheDuration));
+
+            return $estimate;
+        } catch (\Exception $e) {
+            Log::error('OpenAI API error for preview estimate', [
+                'error' => $e->getMessage(),
+                'property_data' => $propertyData,
+            ]);
+
+            throw new \RuntimeException(
+                'Failed to generate rehab estimate: ' . $e->getMessage(),
+                0,
+                $e
+            );
+        }
+    }
+
+    /**
+     * Get cache key for preview estimate based on property data
+     */
+    protected function getPreviewCacheKey(array $propertyData): string
+    {
+        // Create hash based on property characteristics that affect estimate
+        $location = $propertyData['location'] ?? [];
+        $property = $propertyData['property'] ?? [];
+        
+        $dataHash = md5(json_encode([
+            $location['address'] ?? '',
+            $location['city'] ?? '',
+            $location['state'] ?? '',
+            $property['square_feet'] ?? null,
+            $property['bedrooms'] ?? null,
+            $property['bathrooms'] ?? null,
+            $property['year_built'] ?? null,
+            $property['condition'] ?? null,
+            $property['type'] ?? null,
+            $property['lot_size'] ?? null,
+        ]));
+
+        return "rehab_estimate_preview_{$dataHash}";
+    }
+
+    /**
+     * Generate estimate using calculations from property data (no Property model)
+     */
+    protected function generateEstimateWithCalculationsFromData(
+        array $propertyData,
+        ?User $user = null
+    ): array {
+        $property = $propertyData['property'] ?? [];
+        $location = $propertyData['location'] ?? [];
+
+        // Calculate base cost
+        $squareFeet = $property['square_feet'] ?? 0;
+        $propertyType = $property['type'] ?? 'house';
+        
+        $costPerSqft = config("services.rehab_calculations.cost_per_sqft.{$propertyType}", 50);
+        $baseCost = $squareFeet * $costPerSqft;
+
+        // Add bedroom/bathroom costs
+        $bedrooms = $property['bedrooms'] ?? 0;
+        $bathrooms = $property['bathrooms'] ?? 0;
+        $baseCost += ($bedrooms * config('services.rehab_calculations.bedroom_multiplier', 2000));
+        $baseCost += ($bathrooms * config('services.rehab_calculations.bathroom_multiplier', 5000));
+
+        // Apply condition multiplier
+        $condition = $property['condition'] ?? 'fair';
+        $conditionMultipliers = config('services.rehab_calculations.condition_multipliers', []);
+        $conditionMultiplier = $conditionMultipliers[$condition] ?? 1.0;
+        $baseCost *= $conditionMultiplier;
+
+        // Apply age adjustment
+        $yearBuilt = $property['year_built'] ?? null;
+        if ($yearBuilt) {
+            $currentYear = (int) date('Y');
+            $age = $currentYear - $yearBuilt;
+            
+            if ($age < 10) {
+                $ageMultiplier = 0.3;
+            } elseif ($age < 30) {
+                $ageMultiplier = 0.5;
+            } elseif ($age < 50) {
+                $ageMultiplier = 1.0;
+            } elseif ($age < 75) {
+                $ageMultiplier = 1.3;
+            } else {
+                $ageMultiplier = 1.6;
+            }
+            
+            $baseCost *= $ageMultiplier;
+        }
+
+        // Ensure minimum cost
+        $totalCost = max($baseCost, 5000);
+
+        // Generate cost breakdown
+        $breakdown = [
+            'kitchen' => $totalCost * 0.25,
+            'bathrooms' => $totalCost * 0.20,
+            'flooring' => $totalCost * 0.15,
+            'paint' => $totalCost * 0.10,
+            'electrical' => $totalCost * 0.10,
+            'plumbing' => $totalCost * 0.08,
+            'hvac' => $totalCost * 0.07,
+            'roofing' => $totalCost * 0.05,
+        ];
+
+        // Calculate timeline
+        $timelineWeeks = max(4, (int) ($totalCost / 5000));
+
+        // Generate risk factors
+        $riskFactors = [];
+        if ($condition === 'poor' || $condition === 'needs_repair') {
+            $riskFactors[] = 'Property condition may require additional structural repairs';
+        }
+        if ($yearBuilt && (date('Y') - $yearBuilt) > 50) {
+            $riskFactors[] = 'Older property may have hidden issues (plumbing, electrical, foundation)';
+        }
+
+        return [
+            'estimated_cost' => $totalCost,
+            'breakdown' => $breakdown,
+            'labor_percentage' => 40,
+            'materials_percentage' => 60,
+            'timeline_weeks' => $timelineWeeks,
+            'risk_factors' => $riskFactors,
+            'notes' => "Calculation-based estimate for {$location['city']}, {$location['state']}. Based on property size, condition, and age.",
+            'confidence' => 'medium',
+            'model_used' => 'calculation-fallback',
+            'tokens_used' => null,
+            'property_data' => $propertyData,
+            'is_preview' => true,
+            'cached_at' => now()->toIso8601String(),
+        ];
     }
 
     /**

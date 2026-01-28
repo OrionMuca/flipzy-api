@@ -126,6 +126,23 @@ class Property extends Model
     }
 
     /**
+     * Get wishlist entries for this property
+     */
+    public function wishlistEntries(): HasMany
+    {
+        return $this->hasMany(Wishlist::class);
+    }
+
+    /**
+     * Get users who wishlisted this property
+     */
+    public function wishlistedBy(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'wishlists', 'property_id', 'user_id')
+            ->withTimestamps();
+    }
+
+    /**
      * Get analytics by event type
      */
     public function analyticsByType(string $type): HasMany

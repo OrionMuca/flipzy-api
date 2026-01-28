@@ -29,6 +29,7 @@ class User extends Authenticatable
         'password',
         'phone_number',
         'company_name',
+        'photo',
         'stripe_customer_id',
     ];
 
@@ -167,5 +168,22 @@ class User extends Authenticatable
     public function buyBox(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(BuyBox::class);
+    }
+
+    /**
+     * Get wishlist items for this user
+     */
+    public function wishlist(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Wishlist::class);
+    }
+
+    /**
+     * Get wishlisted properties for this user
+     */
+    public function wishlistedProperties(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Property::class, 'wishlists', 'user_id', 'property_id')
+            ->withTimestamps();
     }
 }

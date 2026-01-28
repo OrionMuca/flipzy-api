@@ -1,11 +1,5 @@
 version: '3.8'
 
-# IMPORTANT: Create a .env file in the project root with the following variables:
-# DB_PASSWORD=Go@Flipzy2000
-# DB_ROOT_PASSWORD=root_password
-# (and other environment variables as needed)
-# Docker Compose will automatically load variables from .env file
-
 services:
   # Laravel Application
   app:

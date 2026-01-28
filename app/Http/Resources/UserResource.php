@@ -18,9 +18,15 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'phone_number' => $this->phone_number,
+            'company_name' => $this->company_name,
+            'photo' => $this->photo ? asset('storage/' . $this->photo) : null,
+            'email_verified_at' => $this->email_verified_at,
             'roles' => $this->whenLoaded('roles', function () {
                 return $this->roles->pluck('name');
             }),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

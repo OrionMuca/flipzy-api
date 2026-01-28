@@ -263,5 +263,79 @@ class PropertyService
 
         return $query->paginate($perPage);
     }
+
+    /**
+     * Find similar properties to a given property
+     * 
+     * Similarity is based on:
+     * - Same city and state (location)
+     * - Same property type
+     * - Similar price range (±20%)
+     * - Similar bedrooms (±1)
+     * - Similar bathrooms (±0.5)
+     * - Similar square feet (±15%)
+     */
+    public function findSimilarProperties(Property $property, int $limit = 10): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        $query = Property::with(['wholesaler', 'images', 'primaryImage'])
+            ->where('id', '!=', $property->id) // Exclude the property itself
+            ->where('status', 'active'); // Only active properties
+
+        // Location match (same city and state)
+        if ($property->city && $property->state) {
+            $query->where('city', $property->city)
+                  ->where('state', $property->state);
+        } elseif ($property->state) {
+            // If no city, at least match state
+            $query->where('state', $property->state);
+        }
+
+        // Property type match
+        if ($property->property_type) {
+            $query->where('property_type', $property->property_type);
+        }
+
+        // Price range (±20%)
+        if ($property->asking_price) {
+            $priceRange = $property->asking_price * 0.20; // 20% range
+            $minPrice = $property->asking_price - $priceRange;
+            $maxPrice = $property->asking_price + $priceRange;
+            
+            $query->where('asking_price', '>=', $minPrice)
+                  ->where('asking_price', '<=', $maxPrice);
+        }
+
+        // Bedrooms match (±1)
+        if ($property->bedrooms !== null) {
+            $query->whereBetween('bedrooms', [
+                max(0, $property->bedrooms - 1),
+                $property->bedrooms + 1
+            ]);
+        }
+
+        // Bathrooms match (±0.5)
+        if ($property->bathrooms !== null) {
+            $query->whereBetween('bathrooms', [
+                max(0, $property->bathrooms - 0.5),
+                $property->bathrooms + 0.5
+            ]);
+        }
+
+        // Square feet match (±15%)
+        if ($property->square_feet) {
+            $sqftRange = $property->square_feet * 0.15; // 15% range
+            $minSqft = max(0, $property->square_feet - $sqftRange);
+            $maxSqft = $property->square_feet + $sqftRange;
+            
+            $query->where('square_feet', '>=', $minSqft)
+                  ->where('square_feet', '<=', $maxSqft);
+        }
+
+        // Order by relevance (prioritize exact matches)
+        // We can add a scoring system later, for now just order by created_at
+        $query->orderBy('created_at', 'desc');
+
+        return $query->paginate($limit);
+    }
 }
 

@@ -29,6 +29,11 @@ Route::prefix('v1')->group(function () {
     // Public property viewing
     Route::get('/properties', [\App\Http\Controllers\PropertyController::class, 'index']);
     Route::get('/properties/{property}', [\App\Http\Controllers\PropertyController::class, 'show']);
+    Route::get('/properties/{property}/similar', [\App\Http\Controllers\PropertyController::class, 'similar']);
+    
+    // Newsletter subscription (public)
+    Route::post('/newsletter/subscribe', [\App\Http\Controllers\NewsletterController::class, 'subscribe']);
+    Route::post('/newsletter/unsubscribe', [\App\Http\Controllers\NewsletterController::class, 'unsubscribe']);
     
     // Waiting list routes (public)
     Route::post('/waiting-list/validate-coupon', [\App\Http\Controllers\WaitingListController::class, 'validateCoupon']);
@@ -42,10 +47,22 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     
+    // Profile routes (require auth)
+    Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'update']);
+    
     // Buy Box routes (require auth)
     Route::get('/buy-box', [\App\Http\Controllers\BuyBoxController::class, 'show']);
     Route::put('/buy-box', [\App\Http\Controllers\BuyBoxController::class, 'update']);
-
+    
+    // Buy box matches (require auth - investor only)
+    Route::get('/properties/matches', [\App\Http\Controllers\PropertyController::class, 'matches']);
+    
+    // Wishlist routes (require auth - investor only)
+    Route::get('/wishlist', [\App\Http\Controllers\WishlistController::class, 'index']);
+    Route::post('/wishlist/{property}', [\App\Http\Controllers\WishlistController::class, 'store']);
+    Route::delete('/wishlist/{property}', [\App\Http\Controllers\WishlistController::class, 'destroy']);
+    Route::get('/wishlist/{property}/check', [\App\Http\Controllers\WishlistController::class, 'check']);
+    
     Route::post('/properties/search/preview', [\App\Http\Controllers\PropertyController::class, 'preview']);
     Route::get('/properties/search/address', [\App\Http\Controllers\PropertyController::class, 'lookup']);
     
@@ -83,6 +100,7 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
     Route::get('/analytics/my-analytics', [\App\Http\Controllers\AnalyticsController::class, 'getMyAnalytics']);
     
     // Rehab estimate routes (require auth + premium/VIP or admin)
+    Route::post('/properties/preview/rehab-estimate', [\App\Http\Controllers\RehabEstimateController::class, 'previewEstimate']);
     Route::post('/properties/{property}/estimate', [\App\Http\Controllers\RehabEstimateController::class, 'generateEstimate']);
     Route::get('/properties/{property}/estimates', [\App\Http\Controllers\RehabEstimateController::class, 'getEstimateHistory']);
     Route::get('/estimates/{estimate}', [\App\Http\Controllers\RehabEstimateController::class, 'show']);

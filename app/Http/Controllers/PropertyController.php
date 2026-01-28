@@ -8,6 +8,7 @@ use App\Http\Resources\PropertyCollection;
 use App\Http\Resources\PropertyResource;
 use App\Models\Property;
 use App\Models\PropertyImage;
+use App\Services\BuyBoxService;
 use App\Services\PropertyService;
 use App\Services\PropertyEnrichmentService;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +21,8 @@ class PropertyController extends Controller
 {
     public function __construct(
         protected PropertyService $propertyService,
-        protected PropertyEnrichmentService $enrichmentService
+        protected PropertyEnrichmentService $enrichmentService,
+        protected BuyBoxService $buyBoxService
     ) {}
 
     /**
@@ -713,10 +715,11 @@ public function lookup(Request $request): JsonResponse
         // Remove raw_data before returning
         unset($data['raw_data']);
         
+        // Use PropertyPreviewResource to format data consistently with PropertyResource
         return response()->json([
             'success' => true,
             'message' => 'Property data found',
-            'data' => $data,
+            'data' => new \App\Http\Resources\PropertyPreviewResource($data),
         ]);
     } catch (\Exception $e) {
         Log::error('Property lookup failed', [
@@ -795,11 +798,107 @@ public function lookup(Request $request): JsonResponse
     }
 
     /**
+     * Get properties matching the authenticated investor's buy box
+     */
+    #[OA\Get(
+        path: "/properties/matches",
+        summary: "Get properties matching buy box",
+        description: "Get properties that match the authenticated investor's buy box criteria. Only investors can access this endpoint.",
+        tags: ["Properties"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(name: "per_page", in: "query", schema: new OA\Schema(type: "integer", default: 15)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "List of matching properties"),
+            new OA\Response(response: 401, description: "Unauthenticated"),
+            new OA\Response(response: 403, description: "Forbidden - Investor access required"),
+        ]
+    )]
+    public function matches(Request $request): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+        
+        // Check if user is investor or admin
+        if (!$user->hasRole('investor') && !$user->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. Only investors can view buy box matches.',
+            ], 403);
+        }
+        
+        // Get or create buy box for user
+        $buyBox = $this->buyBoxService->getOrCreate($user);
+        
+        // Get matching properties
+        $perPage = $request->get('per_page', 15);
+        $properties = $this->buyBoxService->findMatchingProperties($buyBox, $perPage);
+        
+        return response()->json([
+            'success' => true,
+            'data' => new PropertyCollection($properties),
+        ]);
+    }
+
+    /**
+     * Get similar properties to the specified property
+     */
+    #[OA\Get(
+        path: "/properties/{id}/similar",
+        summary: "Get similar properties",
+        description: "Get properties similar to the specified property based on location, property type, price range, bedrooms, bathrooms, and square feet. Public endpoint.",
+        tags: ["Properties"],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string", format: "uuid"),
+                example: "550e8400-e29b-41d4-a716-446655440000"
+            ),
+            new OA\Parameter(
+                name: "per_page",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "integer", default: 10),
+                description: "Number of similar properties to return"
+            ),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "List of similar properties"),
+            new OA\Response(response: 404, description: "Property not found"),
+        ]
+    )]
+    public function similar(Request $request, Property $property): JsonResponse
+    {
+        $perPage = $request->get('per_page', 10);
+        
+        // Find similar properties
+        $similarProperties = $this->propertyService->findSimilarProperties($property, $perPage);
+        
+        return response()->json([
+            'success' => true,
+            'data' => new PropertyCollection($similarProperties),
+        ]);
+    }
+
+    /**
      * Check if the authenticated user can modify the property
      */
     protected function canModifyProperty(Property $property): bool
     {
         $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
         return $user->hasRole('admin') || $property->wholesaler_id === $user->id;
     }
 }
