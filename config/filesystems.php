@@ -83,7 +83,9 @@ return [
     */
 
     'links' => [
-        public_path('storage') => env('STORAGE_PATH', storage_path('app/public')),
+        // Always use container path for symlink (storage_path resolves to /var/www/html/storage/app/public)
+        // STORAGE_PATH env var is only used for the 'public' disk root, not for the symlink
+        public_path('storage') => storage_path('app/public'),
     ],
 
 ];
