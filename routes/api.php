@@ -49,7 +49,8 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
     // -------------------------------------------------------------------------
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
-    Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'update']);
+   // Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'update']);
+    Route::post('/profile', [\App\Http\Controllers\ProfileController::class, 'update']);
 
     Route::get('/conversations', [\App\Http\Controllers\ConversationController::class, 'index']);
     Route::post('/conversations', [\App\Http\Controllers\ConversationController::class, 'store']);
