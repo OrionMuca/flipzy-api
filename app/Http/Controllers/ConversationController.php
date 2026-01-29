@@ -116,11 +116,11 @@ class ConversationController extends Controller
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'user_id' => 'required|uuid|exists:users,id',
+            'user_id' => 'required|uuid|exists:users,id', // the other participant (person to message)
             'property_id' => 'nullable|uuid|exists:properties,id',
         ]);
 
-        $currentUser = $request->user();
+        $currentUser = auth()->user();
         $otherUser = \App\Models\User::findOrFail($request->user_id);
 
         // Prevent users from creating conversations with themselves

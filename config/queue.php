@@ -17,6 +17,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Broadcast Queue Name
+    |--------------------------------------------------------------------------
+    |
+    | Queue name used for broadcast jobs (MessageSent, MessageRead, etc.).
+    | Set QUEUE_BROADCAST_QUEUE in .env to use a different queue.
+    |
+    */
+
+    'broadcast_queue' => env('QUEUE_BROADCAST_QUEUE', 'broadcasts'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Queue Connections
     |--------------------------------------------------------------------------
     |

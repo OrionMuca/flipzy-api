@@ -199,9 +199,9 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => env('HORIZON_QUEUES') 
+            'queue' => env('HORIZON_QUEUES')
                 ? array_map('trim', explode(',', env('HORIZON_QUEUES')))
-                : ['default', 'emails-waiting-list', 'emails-auth', 'emails-admin'],
+                : ['default', 'broadcasts', 'emails-waiting-list', 'emails-auth', 'emails-admin'],
             'balance' => env('HORIZON_BALANCE', 'auto'),
             'autoScalingStrategy' => env('HORIZON_AUTO_SCALING_STRATEGY', 'time'),
             'maxProcesses' => (int) env('HORIZON_MAX_PROCESSES', 1),

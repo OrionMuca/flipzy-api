@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use DateTimeInterface;
 use Spatie\Permission\Models\Role as SpatieRole;
 
 /**
@@ -40,6 +41,11 @@ class Role extends SpatieRole
         'name',
         'guard_name',
     ];
+
+    protected function serializeDate(DateTimeInterface $date): string
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
 
     /**
      * Get all users with this role

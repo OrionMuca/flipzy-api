@@ -38,6 +38,14 @@ class MessageRead implements ShouldBroadcast
     }
 
     /**
+     * The queue the broadcast job should be sent to.
+     */
+    public function broadcastQueue(): string
+    {
+        return config('queue.broadcast_queue', 'broadcasts');
+    }
+
+    /**
      * The event's broadcast name.
      */
     public function broadcastAs(): string

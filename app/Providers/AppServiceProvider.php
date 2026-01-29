@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passport\Passport;
 
@@ -24,5 +25,12 @@ class AppServiceProvider extends ServiceProvider
         Passport::tokensExpireIn(now()->addDays(15));
         Passport::refreshTokensExpireIn(now()->addDays(30));
         Passport::enablePasswordGrant();
+
+        // Broadcast auth for private channels (API Bearer token)
+        // Frontend Echo uses authEndpoint: '/api/broadcasting/auth' with Authorization: Bearer <token>
+        Broadcast::routes([
+            'middleware' => ['auth:api'],
+            'prefix' => 'api',
+        ]);
     }
 }

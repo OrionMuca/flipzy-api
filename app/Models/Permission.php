@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use DateTimeInterface;
 use Spatie\Permission\Models\Permission as SpatiePermission;
 
 /**
@@ -41,6 +42,11 @@ class Permission extends SpatiePermission
         'name',
         'guard_name',
     ];
+
+    protected function serializeDate(DateTimeInterface $date): string
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
 
     /**
      * Get all users with this permission
