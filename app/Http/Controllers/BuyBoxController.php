@@ -20,7 +20,7 @@ class BuyBoxController extends Controller
      * Display the authenticated user's buy box
      */
     #[OA\Get(
-        path: "/buy-box",
+        path: "/investor/buy-box",
         summary: "Get user's buy box",
         description: "Get the authenticated user's buy box preferences. Creates an empty buy box if one doesn't exist. Only investors can access buy boxes.",
         tags: ["Buy Box"],
@@ -63,7 +63,7 @@ class BuyBoxController extends Controller
      * Update the authenticated user's buy box
      */
     #[OA\Put(
-        path: "/buy-box",
+        path: "/investor/buy-box",
         summary: "Update user's buy box",
         description: "Create or update the authenticated user's buy box preferences. All fields are optional. Only investors can manage buy boxes.",
         tags: ["Buy Box"],

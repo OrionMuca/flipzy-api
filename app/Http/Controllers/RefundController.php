@@ -230,6 +230,9 @@ class RefundController extends Controller
 
         $refund->load('subscription');
 
-        return new TransactionResource($refund);
+        return response()->json([
+            'success' => true,
+            'data' => new TransactionResource($refund),
+        ]);
     }
 }

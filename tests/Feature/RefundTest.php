@@ -33,10 +33,10 @@ class RefundTest extends TestCase
         $client->revoked = false;
         $client->save();
         
-        // Ensure roles exist
-        Role::firstOrCreate(['name' => 'admin']);
-        Role::firstOrCreate(['name' => 'investor']);
-        Role::firstOrCreate(['name' => 'wholesaler']);
+        // Ensure roles exist (with api guard)
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'api']);
+        Role::firstOrCreate(['name' => 'investor', 'guard_name' => 'api']);
+        Role::firstOrCreate(['name' => 'wholesaler', 'guard_name' => 'api']);
 
         // Create test users
         $this->user = User::factory()->create();

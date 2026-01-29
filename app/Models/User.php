@@ -186,4 +186,12 @@ class User extends Authenticatable
         return $this->belongsToMany(Property::class, 'wishlists', 'user_id', 'property_id')
             ->withTimestamps();
     }
+
+    /**
+     * Get wholesaler investor profiles owned by this user (as wholesaler)
+     */
+    public function wholesalerInvestorProfiles(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(WholesalerInvestorProfile::class, 'wholesaler_id');
+    }
 }

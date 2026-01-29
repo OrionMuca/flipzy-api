@@ -17,7 +17,7 @@ class WishlistController extends Controller
      * Get authenticated user's wishlist
      */
     #[OA\Get(
-        path: "/wishlist",
+        path: "/investor/wishlist",
         summary: "Get user's wishlist",
         description: "Get all properties in the authenticated user's wishlist. Only investors can access this endpoint.",
         tags: ["Wishlist"],
@@ -34,6 +34,21 @@ class WishlistController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = $request->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+        
+        // Only investors (and optionally admins) can use wishlist
+        if (!$user->hasRole('investor') && !$user->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. Only investors can manage wishlists.',
+            ], 403);
+        }
         
         $perPage = $request->get('per_page', 15);
         
@@ -53,7 +68,7 @@ class WishlistController extends Controller
      * Add property to wishlist
      */
     #[OA\Post(
-        path: "/wishlist/{property}",
+        path: "/investor/wishlist/{property}",
         summary: "Add property to wishlist",
         description: "Add a property to the authenticated user's wishlist. Only investors can access this endpoint.",
         tags: ["Wishlist"],
@@ -78,6 +93,20 @@ class WishlistController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = $request->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+        
+        if (!$user->hasRole('investor') && !$user->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. Only investors can manage wishlists.',
+            ], 403);
+        }
         
         // Check if already in wishlist
         $exists = Wishlist::where('user_id', $user->id)
@@ -110,7 +139,7 @@ class WishlistController extends Controller
      * Remove property from wishlist
      */
     #[OA\Delete(
-        path: "/wishlist/{property}",
+        path: "/investor/wishlist/{property}",
         summary: "Remove property from wishlist",
         description: "Remove a property from the authenticated user's wishlist. Only investors can access this endpoint.",
         tags: ["Wishlist"],
@@ -133,6 +162,20 @@ class WishlistController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = $request->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+        
+        if (!$user->hasRole('investor') && !$user->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. Only investors can manage wishlists.',
+            ], 403);
+        }
         
         $wishlistItem = Wishlist::where('user_id', $user->id)
             ->where('property_id', $property->id)
@@ -157,7 +200,7 @@ class WishlistController extends Controller
      * Check if property is in wishlist
      */
     #[OA\Get(
-        path: "/wishlist/{property}/check",
+        path: "/investor/wishlist/{property}/check",
         summary: "Check if property is in wishlist",
         description: "Check if a property is in the authenticated user's wishlist.",
         tags: ["Wishlist"],
@@ -179,6 +222,20 @@ class WishlistController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = $request->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+        
+        if (!$user->hasRole('investor') && !$user->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. Only investors can manage wishlists.',
+            ], 403);
+        }
         
         $inWishlist = Wishlist::where('user_id', $user->id)
             ->where('property_id', $property->id)

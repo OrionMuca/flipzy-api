@@ -58,8 +58,8 @@ class RehabEstimateRealApiTest extends TestCase
         $client->revoked = false;
         $client->save();
 
-        // Ensure roles exist
-        Role::firstOrCreate(['name' => 'admin']);
+        // Ensure roles exist (with api guard)
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'api']);
 
         // Create admin user
         $this->admin = User::factory()->create([

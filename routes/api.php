@@ -18,23 +18,23 @@ use App\Http\Controllers\AuthController;
 Route::prefix('v1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
-    
+
     // Password reset routes (public)
     Route::post('/password/forgot', [AuthController::class, 'forgotPassword']);
     Route::post('/password/reset', [AuthController::class, 'resetPassword']);
-    
+
     // Email verification routes (public)
     Route::get('/email/verify', [AuthController::class, 'verifyEmail']);
-    
+
     // Public property viewing
     Route::get('/properties', [\App\Http\Controllers\PropertyController::class, 'index']);
     Route::get('/properties/{property}', [\App\Http\Controllers\PropertyController::class, 'show']);
     Route::get('/properties/{property}/similar', [\App\Http\Controllers\PropertyController::class, 'similar']);
-    
+
     // Newsletter subscription (public)
     Route::post('/newsletter/subscribe', [\App\Http\Controllers\NewsletterController::class, 'subscribe']);
     Route::post('/newsletter/unsubscribe', [\App\Http\Controllers\NewsletterController::class, 'unsubscribe']);
-    
+
     // Waiting list routes (public)
     Route::post('/waiting-list/validate-coupon', [\App\Http\Controllers\WaitingListController::class, 'validateCoupon']);
     Route::post('/waiting-list/register', [\App\Http\Controllers\WaitingListController::class, 'register']);
@@ -44,77 +44,93 @@ Route::prefix('v1')->group(function () {
 
 // Protected routes
 Route::middleware('auth:api')->prefix('v1')->group(function () {
+    // -------------------------------------------------------------------------
+    // Shared: auth, profile, conversations, messages, notifications
+    // -------------------------------------------------------------------------
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
-    
-    // Profile routes (require auth)
     Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'update']);
-    
-    // Buy Box routes (require auth)
-    Route::get('/buy-box', [\App\Http\Controllers\BuyBoxController::class, 'show']);
-    Route::put('/buy-box', [\App\Http\Controllers\BuyBoxController::class, 'update']);
-    
-    // Buy box matches (require auth - investor only)
-    Route::get('/properties/matches', [\App\Http\Controllers\PropertyController::class, 'matches']);
-    
-    // Wishlist routes (require auth - investor only)
-    Route::get('/wishlist', [\App\Http\Controllers\WishlistController::class, 'index']);
-    Route::post('/wishlist/{property}', [\App\Http\Controllers\WishlistController::class, 'store']);
-    Route::delete('/wishlist/{property}', [\App\Http\Controllers\WishlistController::class, 'destroy']);
-    Route::get('/wishlist/{property}/check', [\App\Http\Controllers\WishlistController::class, 'check']);
-    
-    Route::post('/properties/search/preview', [\App\Http\Controllers\PropertyController::class, 'preview']);
-    Route::get('/properties/search/address', [\App\Http\Controllers\PropertyController::class, 'lookup']);
-    
-    // Property CRUD (create, update, delete require auth)
-    Route::post('/properties', [\App\Http\Controllers\PropertyController::class, 'store']);
-    Route::put('/properties/{property}', [\App\Http\Controllers\PropertyController::class, 'update']);
-    Route::delete('/properties/{property}', [\App\Http\Controllers\PropertyController::class, 'destroy']);
-    
-    // Property image routes (require auth)
-    Route::post('/properties/{property}/images', [\App\Http\Controllers\PropertyController::class, 'uploadImages']);
-    Route::delete('/properties/{property}/images/{image}', [\App\Http\Controllers\PropertyController::class, 'deleteImage']);
-    Route::put('/properties/{property}/images/{image}/primary', [\App\Http\Controllers\PropertyController::class, 'setPrimaryImage']);
-    
-    // Property enrichment route (require auth)
-    Route::post('/properties/{property}/enrich', [\App\Http\Controllers\PropertyController::class, 'enrich']);
-    
-    // Conversation routes (require auth)
+
     Route::get('/conversations', [\App\Http\Controllers\ConversationController::class, 'index']);
     Route::post('/conversations', [\App\Http\Controllers\ConversationController::class, 'store']);
     Route::get('/conversations/{conversation}', [\App\Http\Controllers\ConversationController::class, 'show']);
-    
-    // Message routes (require auth)
     Route::get('/conversations/{conversation}/messages', [\App\Http\Controllers\MessageController::class, 'index']);
     Route::post('/conversations/{conversation}/messages', [\App\Http\Controllers\MessageController::class, 'store']);
     Route::put('/conversations/{conversation}/messages/read', [\App\Http\Controllers\MessageController::class, 'markConversationAsRead']);
     Route::put('/messages/{message}/read', [\App\Http\Controllers\MessageController::class, 'markAsRead']);
     Route::get('/messages/unread-count', [\App\Http\Controllers\MessageController::class, 'unreadCount']);
-    
-    // Analytics routes (require auth)
+
+    // -------------------------------------------------------------------------
+    // Wholesaler-only: properties (add/edit/delete), my properties, investor
+    // profiles, investor matches, search preview/lookup, images, enrich
+    // -------------------------------------------------------------------------
+    Route::prefix('wholesaler')->group(function () {
+        // Wholesaler investor profiles (criteria / list of investors)
+        Route::get('/investor-profiles', [\App\Http\Controllers\WholesalerInvestorProfileController::class, 'index']);
+        Route::post('/investor-profiles', [\App\Http\Controllers\WholesalerInvestorProfileController::class, 'store']);
+        Route::get('/investor-profiles/{profile}', [\App\Http\Controllers\WholesalerInvestorProfileController::class, 'show']);
+        Route::put('/investor-profiles/{profile}', [\App\Http\Controllers\WholesalerInvestorProfileController::class, 'update']);
+        Route::delete('/investor-profiles/{profile}', [\App\Http\Controllers\WholesalerInvestorProfileController::class, 'destroy']);
+        Route::post('/investor-profiles/import', [\App\Http\Controllers\WholesalerInvestorProfileController::class, 'import']);
+
+        // My listed properties
+        Route::get('/properties/my', [\App\Http\Controllers\PropertyController::class, 'my']);
+        // Search preview & address lookup (when adding a property)
+        Route::post('/properties/search/preview', [\App\Http\Controllers\PropertyController::class, 'preview']);
+        Route::get('/properties/search/address', [\App\Http\Controllers\PropertyController::class, 'lookup']);
+        // Property CRUD
+        Route::post('/properties', [\App\Http\Controllers\PropertyController::class, 'store']);
+        Route::put('/properties/{property}', [\App\Http\Controllers\PropertyController::class, 'update']);
+        Route::delete('/properties/{property}', [\App\Http\Controllers\PropertyController::class, 'destroy']);
+        // Investor matches for a property
+        Route::get('/properties/{property}/investor-matches', [\App\Http\Controllers\PropertyController::class, 'investorMatches']);
+        // Property images & enrichment
+        Route::post('/properties/{property}/images', [\App\Http\Controllers\PropertyController::class, 'uploadImages']);
+        Route::delete('/properties/{property}/images/{image}', [\App\Http\Controllers\PropertyController::class, 'deleteImage']);
+        Route::put('/properties/{property}/images/{image}/primary', [\App\Http\Controllers\PropertyController::class, 'setPrimaryImage']);
+        Route::post('/properties/{property}/enrich', [\App\Http\Controllers\PropertyController::class, 'enrich']);
+    });
+
+    // -------------------------------------------------------------------------
+    // Investor-only: property matches (buy box), buy box, wishlist
+    // -------------------------------------------------------------------------
+    Route::prefix('investor')->group(function () {
+        Route::get('/properties/matches', [\App\Http\Controllers\PropertyController::class, 'matches']);
+        Route::get('/buy-box', [\App\Http\Controllers\BuyBoxController::class, 'show']);
+        Route::put('/buy-box', [\App\Http\Controllers\BuyBoxController::class, 'update']);
+        Route::get('/wishlist', [\App\Http\Controllers\WishlistController::class, 'index']);
+        Route::post('/wishlist/{property}', [\App\Http\Controllers\WishlistController::class, 'store']);
+        Route::delete('/wishlist/{property}', [\App\Http\Controllers\WishlistController::class, 'destroy']);
+        Route::get('/wishlist/{property}/check', [\App\Http\Controllers\WishlistController::class, 'check']);
+    });
+
+    // -------------------------------------------------------------------------
+    // Shared: analytics, rehab estimates, payments, subscriptions, notifications
+    // -------------------------------------------------------------------------
+    // Analytics routes
     Route::post('/properties/{property}/view', [\App\Http\Controllers\AnalyticsController::class, 'trackView']);
     Route::post('/properties/{property}/save', [\App\Http\Controllers\AnalyticsController::class, 'trackSave']);
     Route::post('/properties/{property}/inquiry', [\App\Http\Controllers\AnalyticsController::class, 'trackInquiry']);
     Route::get('/properties/{property}/analytics', [\App\Http\Controllers\AnalyticsController::class, 'getPropertyAnalytics']);
     Route::get('/users/{user}/credibility', [\App\Http\Controllers\AnalyticsController::class, 'getCredibilityScore']);
     Route::get('/analytics/my-analytics', [\App\Http\Controllers\AnalyticsController::class, 'getMyAnalytics']);
-    
+
     // Rehab estimate routes (require auth + premium/VIP or admin)
     Route::post('/properties/preview/rehab-estimate', [\App\Http\Controllers\RehabEstimateController::class, 'previewEstimate']);
     Route::post('/properties/{property}/estimate', [\App\Http\Controllers\RehabEstimateController::class, 'generateEstimate']);
     Route::get('/properties/{property}/estimates', [\App\Http\Controllers\RehabEstimateController::class, 'getEstimateHistory']);
     Route::get('/estimates/{estimate}', [\App\Http\Controllers\RehabEstimateController::class, 'show']);
-    
+
     // Payment routes (require auth)
     Route::post('/payments/intent', [\App\Http\Controllers\PaymentController::class, 'createIntent']);
     Route::post('/payments/confirm', [\App\Http\Controllers\PaymentController::class, 'confirm']);
     Route::get('/payments/transactions', [\App\Http\Controllers\PaymentController::class, 'transactions']);
     Route::get('/payments/transactions/{transaction}', [\App\Http\Controllers\PaymentController::class, 'show']);
-    
+
     // Refund routes (require auth)
     Route::post('/refunds', [\App\Http\Controllers\RefundController::class, 'create']);
     Route::get('/refunds/{refund}', [\App\Http\Controllers\RefundController::class, 'show']);
-    
+
     // Subscription routes (require auth)
     Route::get('/subscriptions/plans', [\App\Http\Controllers\SubscriptionController::class, 'plans']);
     Route::post('/subscriptions/checkout', [\App\Http\Controllers\SubscriptionController::class, 'checkout']);
@@ -122,14 +138,14 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
     Route::get('/subscriptions/current', [\App\Http\Controllers\SubscriptionController::class, 'current']);
     Route::post('/subscriptions/cancel', [\App\Http\Controllers\SubscriptionController::class, 'cancel']);
     Route::get('/subscriptions/history', [\App\Http\Controllers\SubscriptionController::class, 'history']);
-    
+
     // Notification routes (require auth)
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::get('/notifications/unread-count', [\App\Http\Controllers\NotificationController::class, 'unreadCount']);
     Route::put('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
     Route::put('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
     Route::delete('/notifications/{id}', [\App\Http\Controllers\NotificationController::class, 'destroy']);
-    
+
     // Admin routes (require admin role)
     Route::middleware('admin')->prefix('admin')->group(function () {
         // User management
@@ -139,7 +155,7 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         Route::delete('/users/{user}', [\App\Http\Controllers\Admin\AdminUserController::class, 'destroy']);
         Route::post('/users/{user}/suspend', [\App\Http\Controllers\Admin\AdminUserController::class, 'suspend']);
         Route::post('/users/{user}/activate', [\App\Http\Controllers\Admin\AdminUserController::class, 'activate']);
-        
+
         // Property management
         Route::get('/properties', [\App\Http\Controllers\Admin\AdminPropertyController::class, 'index']);
         Route::get('/properties/{property}', [\App\Http\Controllers\Admin\AdminPropertyController::class, 'show']);
@@ -148,7 +164,7 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         Route::post('/properties/{property}/approve', [\App\Http\Controllers\Admin\AdminPropertyController::class, 'approve']);
         Route::post('/properties/{property}/feature', [\App\Http\Controllers\Admin\AdminPropertyController::class, 'feature']);
         Route::post('/properties/{property}/verify', [\App\Http\Controllers\Admin\AdminPropertyController::class, 'verify']);
-        
+
         // Analytics & Statistics
         Route::get('/analytics/overview', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'overview']);
         Route::get('/analytics/users', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'users']);
@@ -158,24 +174,24 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         Route::get('/analytics/top-properties', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'topProperties']);
         Route::get('/analytics/top-wholesalers', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'topWholesalers']);
         Route::get('/analytics/geographic', [\App\Http\Controllers\Admin\AdminAnalyticsController::class, 'geographicDistribution']);
-        
+
         // Subscription management
         Route::get('/subscriptions', [\App\Http\Controllers\Admin\AdminSubscriptionController::class, 'index']);
         Route::get('/subscriptions/{subscription}', [\App\Http\Controllers\Admin\AdminSubscriptionController::class, 'show']);
         Route::get('/subscriptions/plans', [\App\Http\Controllers\Admin\AdminSubscriptionController::class, 'plans']);
         Route::get('/subscriptions/stats', [\App\Http\Controllers\Admin\AdminSubscriptionController::class, 'stats']);
-        
+
         // Transaction management
         Route::get('/transactions', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'index']);
         Route::get('/transactions/stats', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'stats']);
         Route::get('/transactions/{transaction}', [\App\Http\Controllers\Admin\AdminTransactionController::class, 'show']);
-        
+
         // System management
         Route::get('/system/health', [\App\Http\Controllers\Admin\AdminSystemController::class, 'health']);
         Route::get('/system/stats', [\App\Http\Controllers\Admin\AdminSystemController::class, 'stats']);
         Route::get('/system/logs', [\App\Http\Controllers\Admin\AdminSystemController::class, 'logs']);
         Route::get('/system/queue', [\App\Http\Controllers\Admin\AdminSystemController::class, 'queue']);
-        
+
         // Waiting list management
         Route::get('/waiting-list', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'index']);
         Route::post('/waiting-list', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'store']);
@@ -188,17 +204,17 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         Route::get('/waiting-list/{id}', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'show']);
         Route::put('/waiting-list/{id}', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'update']);
         Route::delete('/waiting-list/{id}', [\App\Http\Controllers\Admin\AdminWaitingListController::class, 'destroy']);
-        
+
         // Coupon management
         Route::get('/coupons', [\App\Http\Controllers\Admin\AdminCouponController::class, 'index']);
         Route::post('/coupons', [\App\Http\Controllers\Admin\AdminCouponController::class, 'store']);
         Route::get('/coupons/{id}', [\App\Http\Controllers\Admin\AdminCouponController::class, 'show']);
         Route::put('/coupons/{id}', [\App\Http\Controllers\Admin\AdminCouponController::class, 'update']);
         Route::delete('/coupons/{id}', [\App\Http\Controllers\Admin\AdminCouponController::class, 'destroy']);
-        
+
         // Notification management
         Route::post('/notifications/send', [\App\Http\Controllers\Admin\AdminNotificationController::class, 'send']);
-        
+
         // Email campaign management
         Route::get('/email-campaigns', [\App\Http\Controllers\Admin\AdminEmailCampaignController::class, 'index']);
         Route::post('/email-campaigns', [\App\Http\Controllers\Admin\AdminEmailCampaignController::class, 'store']);

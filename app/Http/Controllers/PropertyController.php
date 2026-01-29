@@ -6,8 +6,10 @@ use App\Http\Requests\StorePropertyRequest;
 use App\Http\Requests\UpdatePropertyRequest;
 use App\Http\Resources\PropertyCollection;
 use App\Http\Resources\PropertyResource;
+use App\Http\Resources\WholesalerInvestorProfileResource;
 use App\Models\Property;
 use App\Models\PropertyImage;
+use App\Models\WholesalerInvestorProfile;
 use App\Services\BuyBoxService;
 use App\Services\PropertyService;
 use App\Services\PropertyEnrichmentService;
@@ -479,7 +481,7 @@ class PropertyController extends Controller
  * Preview property data from external APIs without storing
  */
 #[OA\Post(
-    path: "/properties/preview",
+    path: "/wholesaler/properties/search/preview",
     summary: "Preview property data",
     description: "Fetch property data from external APIs (ATTOM) without creating a property record. Useful for previewing data before creating a listing.",
     tags: ["Properties"],
@@ -600,7 +602,7 @@ public function preview(Request $request): JsonResponse
  * Lookup property data by address
  */
 #[OA\Get(
-    path: "/properties/lookup",
+    path: "/wholesaler/properties/search/address",
     summary: "Lookup property by address",
     description: "Quick lookup of property data. Accepts either full address string OR separate address components.",
     tags: ["Properties"],
@@ -801,7 +803,7 @@ public function lookup(Request $request): JsonResponse
      * Get properties matching the authenticated investor's buy box
      */
     #[OA\Get(
-        path: "/properties/matches",
+        path: "/investor/properties/matches",
         summary: "Get properties matching buy box",
         description: "Get properties that match the authenticated investor's buy box criteria. Only investors can access this endpoint.",
         tags: ["Properties"],
@@ -849,6 +851,62 @@ public function lookup(Request $request): JsonResponse
     }
 
     /**
+     * Get properties created by the authenticated wholesaler
+     */
+    #[OA\Get(
+        path: "/wholesaler/properties/my",
+        summary: "List my properties",
+        description: "List properties created by the authenticated wholesaler. Requires authentication and wholesaler role.",
+        tags: ["Properties"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(name: "status", in: "query", schema: new OA\Schema(type: "string")),
+            new OA\Parameter(name: "per_page", in: "query", schema: new OA\Schema(type: "integer", default: 15)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "List of wholesaler's properties"),
+            new OA\Response(response: 401, description: "Unauthenticated"),
+            new OA\Response(response: 403, description: "Forbidden - Wholesaler access required"),
+        ]
+    )]
+    public function my(Request $request): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        // Check if user is wholesaler or admin
+        if (!$user->hasRole('wholesaler') && !$user->hasRole('admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. Only wholesalers can view their properties.',
+            ], 403);
+        }
+
+        $perPage = (int) $request->get('per_page', 15);
+
+        $query = Property::with(['wholesaler', 'images', 'primaryImage'])
+            ->where('wholesaler_id', $user->id);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->get('status'));
+        }
+
+        $properties = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => new PropertyCollection($properties),
+        ]);
+    }
+
+    /**
      * Get similar properties to the specified property
      */
     #[OA\Get(
@@ -887,6 +945,166 @@ public function lookup(Request $request): JsonResponse
         return response()->json([
             'success' => true,
             'data' => new PropertyCollection($similarProperties),
+        ]);
+    }
+
+    /**
+     * Get wholesaler investor profiles matching the specified property
+     */
+    public function investorMatches(Request $request, Property $property): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        // Only the wholesaler who owns the property or admin can view matches
+        if (!$user->hasRole('admin') && $property->wholesaler_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. You cannot view investor matches for this property.',
+            ], 403);
+        }
+
+        $perPage = (int) $request->get('per_page', 15);
+
+        $query = WholesalerInvestorProfile::where('wholesaler_id', $property->wholesaler_id);
+
+        // City filter
+        if ($property->city) {
+            $query->where(function ($q) use ($property) {
+                $q->whereNull('preferred_cities')
+                    ->orWhereJsonContains('preferred_cities', $property->city);
+            });
+        }
+
+        // ZIP code filter
+        if ($property->zip_code) {
+            $query->where(function ($q) use ($property) {
+                $q->whereNull('preferred_zip_codes')
+                    ->orWhereJsonContains('preferred_zip_codes', $property->zip_code);
+            });
+        }
+
+        // Property type filter (reuse mapping from BuyBoxService)
+        if ($property->property_type) {
+            $typeMap = [
+                'house' => 'Single-Family',
+                'apartment' => 'Multifamily',
+                'land' => 'Land',
+                'other' => 'Commercial',
+            ];
+
+            $buyBoxType = $typeMap[$property->property_type] ?? null;
+
+            if ($buyBoxType) {
+                $query->where(function ($q) use ($buyBoxType) {
+                    $q->whereNull('property_types')
+                        ->orWhereJsonContains('property_types', $buyBoxType);
+                });
+            }
+        }
+
+        // Bedrooms filter
+        if ($property->bedrooms !== null) {
+            $query->where(function ($q) use ($property) {
+                $q->whereNull('min_bedrooms')
+                    ->orWhere('min_bedrooms', '<=', $property->bedrooms);
+            });
+
+            $query->where(function ($q) use ($property) {
+                $q->whereNull('max_bedrooms')
+                    ->orWhere('max_bedrooms', '>=', $property->bedrooms);
+            });
+        }
+
+        // Bathrooms filter
+        if ($property->bathrooms !== null) {
+            $query->where(function ($q) use ($property) {
+                $q->whereNull('min_bathrooms')
+                    ->orWhere('min_bathrooms', '<=', $property->bathrooms);
+            });
+
+            $query->where(function ($q) use ($property) {
+                $q->whereNull('max_bathrooms')
+                    ->orWhere('max_bathrooms', '>=', $property->bathrooms);
+            });
+        }
+
+        // Square feet filter
+        if ($property->square_feet !== null) {
+            $query->where(function ($q) use ($property) {
+                $q->whereNull('min_square_feet')
+                    ->orWhere('min_square_feet', '<=', $property->square_feet);
+            });
+
+            $query->where(function ($q) use ($property) {
+                $q->whereNull('max_square_feet')
+                    ->orWhere('max_square_feet', '>=', $property->square_feet);
+            });
+        }
+
+        // Lot size filter
+        if ($property->lot_size !== null) {
+            $query->where(function ($q) use ($property) {
+                $q->whereNull('min_lot_size')
+                    ->orWhere('min_lot_size', '<=', $property->lot_size);
+            });
+
+            $query->where(function ($q) use ($property) {
+                $q->whereNull('max_lot_size')
+                    ->orWhere('max_lot_size', '>=', $property->lot_size);
+            });
+        }
+
+        // Property condition filter
+        if ($property->condition) {
+            $conditionMap = [
+                'excellent' => 'Turnkey',
+                'good' => 'Retail Ready',
+                'fair' => 'Rental Ready',
+            ];
+
+            $buyBoxCondition = $conditionMap[$property->condition] ?? null;
+
+            if ($buyBoxCondition) {
+                $query->where(function ($q) use ($buyBoxCondition) {
+                    $q->whereNull('property_conditions')
+                        ->orWhereJsonContains('property_conditions', $buyBoxCondition);
+                });
+            }
+        }
+
+        // Profit filter based on property's potential profit or derived from arv - asking_price - repair_estimate
+        $propertyProfit = $property->potential_profit ?? ($property->arv && $property->asking_price && $property->repair_estimate 
+            ? ($property->arv - $property->asking_price - $property->repair_estimate) 
+            : null);
+
+        if ($propertyProfit !== null) {
+            $query->where(function ($q) use ($propertyProfit) {
+                $q->whereNull('min_profit')
+                    ->orWhere('min_profit', '<=', $propertyProfit);
+            });
+        }
+
+        $profiles = $query
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => WholesalerInvestorProfileResource::collection($profiles),
+            'meta' => [
+                'current_page' => $profiles->currentPage(),
+                'last_page' => $profiles->lastPage(),
+                'per_page' => $profiles->perPage(),
+                'total' => $profiles->total(),
+            ],
         ]);
     }
 
