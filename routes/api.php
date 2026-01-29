@@ -75,6 +75,8 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
 
         // My listed properties
         Route::get('/properties/my', [\App\Http\Controllers\PropertyController::class, 'my']);
+        // Address suggestions for autocomplete (when adding a property)
+        Route::get('/address-suggestions', [\App\Http\Controllers\AddressSuggestionController::class, 'index']);
         // Search preview & address lookup (when adding a property)
         Route::post('/properties/search/preview', [\App\Http\Controllers\PropertyController::class, 'preview']);
         Route::get('/properties/search/address', [\App\Http\Controllers\PropertyController::class, 'lookup']);

@@ -14,6 +14,26 @@ class GeoService
     protected ?string $mapboxToken;
     protected int $timeout = 10;
 
+    /** Shorter timeout for address suggestions so UI doesn't hang (Nominatim can be slow). */
+    protected int $suggestionTimeout = 4;
+
+    /**
+     * US state name to 2-letter code (for ATTOM-style address format)
+     */
+    protected const US_STATE_ABBREV = [
+        'alabama' => 'AL', 'alaska' => 'AK', 'arizona' => 'AZ', 'arkansas' => 'AR', 'california' => 'CA',
+        'colorado' => 'CO', 'connecticut' => 'CT', 'delaware' => 'DE', 'district of columbia' => 'DC',
+        'florida' => 'FL', 'georgia' => 'GA', 'hawaii' => 'HI', 'idaho' => 'ID', 'illinois' => 'IL',
+        'indiana' => 'IN', 'iowa' => 'IA', 'kansas' => 'KS', 'kentucky' => 'KY', 'louisiana' => 'LA',
+        'maine' => 'ME', 'maryland' => 'MD', 'massachusetts' => 'MA', 'michigan' => 'MI', 'minnesota' => 'MN',
+        'mississippi' => 'MS', 'missouri' => 'MO', 'montana' => 'MT', 'nebraska' => 'NE', 'nevada' => 'NV',
+        'new hampshire' => 'NH', 'new jersey' => 'NJ', 'new mexico' => 'NM', 'new york' => 'NY',
+        'north carolina' => 'NC', 'north dakota' => 'ND', 'ohio' => 'OH', 'oklahoma' => 'OK', 'oregon' => 'OR',
+        'pennsylvania' => 'PA', 'rhode island' => 'RI', 'south carolina' => 'SC', 'south dakota' => 'SD',
+        'tennessee' => 'TN', 'texas' => 'TX', 'utah' => 'UT', 'vermont' => 'VT', 'virginia' => 'VA',
+        'washington' => 'WA', 'west virginia' => 'WV', 'wisconsin' => 'WI', 'wyoming' => 'WY',
+    ];
+
     public function __construct()
     {
         $this->service = config('services.geo.service', env('GEO_SERVICE', 'openstreetmap'));
@@ -27,12 +47,12 @@ class GeoService
     {
         $fullAddress = $this->buildAddress($address, $city, $state, $zip);
         $cacheKey = "geo:{$fullAddress}";
-        
+
         // If forcing fresh data, clear cache first
         if ($forceFresh) {
             Cache::forget($cacheKey);
         }
-        
+
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($fullAddress) {
             try {
                 if ($this->service === 'mapbox' && $this->mapboxToken) {
@@ -59,19 +79,19 @@ class GeoService
         if (!filter_var($ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
             return null;
         }
-        
+
         $cacheKey = "ip_geo:{$ipAddress}";
-        
+
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($ipAddress) {
             try {
                 // Use ipapi.co (free tier: 1,000 requests/day)
                 $response = Http::timeout(5)->get("https://ipapi.co/{$ipAddress}/json/");
-                
+
                 if ($response->successful()) {
                     $data = $response->json();
                     // Return US state code (2-letter abbreviation)
                     $state = $data['region_code'] ?? null;
-                    
+
                     // Only return if it's a valid US state code (2 letters)
                     if ($state && strlen($state) === 2 && ctype_alpha($state)) {
                         return strtoupper($state);
@@ -83,9 +103,294 @@ class GeoService
                     'error' => $e->getMessage(),
                 ]);
             }
-            
+
             return null;
         });
+    }
+
+    /**
+     * Get address suggestions for autocomplete (as user types).
+     * Uses Mapbox when token is set, otherwise OpenStreetMap Nominatim.
+     * Supports zip-only (e.g. "19977"), state+zip (e.g. "DE 19977"), or full US address (e.g. "468 SEQUOIA DR, SMYRNA, DE 19977").
+     * Results are cached to improve response time.
+     *
+     * @return array<int, array{formatted_address: string, latitude: float, longitude: float, place_id: string, address_components?: array}>
+     */
+    public function getAddressSuggestions(string $query, int $limit = 8): array
+    {
+        $query = trim($query);
+        if (strlen($query) < 2) {
+            return [];
+        }
+
+        $normalized = preg_replace('/\s+/', ' ', strtolower($query));
+        $cacheKey = 'address_suggestions:' . md5($normalized . '|' . $limit);
+        $ttl = now()->addHours(24);
+
+        return Cache::remember($cacheKey, $ttl, function () use ($query, $limit) {
+            try {
+                if ($this->service === 'mapbox' && $this->mapboxToken) {
+                    return $this->getAddressSuggestionsMapbox($query, $limit);
+                }
+                return $this->getAddressSuggestionsOpenStreetMap($query, $limit);
+            } catch (\Exception $e) {
+                Log::error('Address suggestions exception', [
+                    'message' => $e->getMessage(),
+                    'query' => $query,
+                ]);
+                return [];
+            }
+        });
+    }
+
+    /**
+     * Address suggestions via Mapbox Geocoding API
+     */
+    protected function getAddressSuggestionsMapbox(string $query, int $limit): array
+    {
+        $encoded = rawurlencode($query);
+        $response = Http::timeout($this->suggestionTimeout)
+            ->get("https://api.mapbox.com/geocoding/v5/mapbox.places/{$encoded}.json", [
+                'access_token' => $this->mapboxToken,
+                'types' => 'address,place,postcode',
+                'country' => 'US',
+                'limit' => min($limit, 10),
+            ]);
+
+        if (!$response->successful()) {
+            return [];
+        }
+
+        $data = $response->json();
+        $features = $data['features'] ?? [];
+        $suggestions = [];
+
+        foreach ($features as $feature) {
+            $coordinates = $feature['geometry']['coordinates'] ?? [];
+            $context = $feature['context'] ?? [];
+            $components = $this->mapMapboxContextToComponents($context);
+
+            // Build street: first part of place_name, or address number + text
+            $placeName = $feature['place_name'] ?? '';
+            $street = $this->extractStreetFromMapboxFeature($feature, $placeName);
+
+            $city = $components['city'];
+            $stateRaw = $components['state'];
+            $stateCode = $this->usStateAbbrev($stateRaw);
+            $postcode = $components['postcode'];
+
+            $placeType = $feature['place_type'][0] ?? '';
+            $displayStreet = in_array($placeType, ['place', 'postcode'], true) ? '' : ($street ?: $placeName);
+            $formattedAddress = $this->formatAddressForAttom($displayStreet, $city, $stateCode ?? $stateRaw, $postcode);
+
+            $components['state_code'] = $stateCode;
+            $suggestions[] = [
+                'formatted_address' => $formattedAddress,
+                'latitude' => (float) ($coordinates[1] ?? 0),
+                'longitude' => (float) ($coordinates[0] ?? 0),
+                'place_id' => $feature['id'] ?? '',
+                'address_components' => $components,
+            ];
+        }
+
+        return $suggestions;
+    }
+
+    /**
+     * Extract street line from Mapbox feature (for ATTOM format)
+     */
+    protected function extractStreetFromMapboxFeature(array $feature, string $placeName): string
+    {
+        $props = $feature['properties'] ?? [];
+        $addressNumber = trim($props['address'] ?? '');
+        $text = trim($feature['text'] ?? '');
+        if ($addressNumber !== '' && $text !== '') {
+            return $addressNumber . ' ' . $text;
+        }
+        if ($text !== '') {
+            return $text;
+        }
+        $parts = array_map('trim', explode(',', $placeName));
+        return $parts[0] ?? $placeName;
+    }
+
+    /**
+     * Address suggestions via OpenStreetMap Nominatim.
+     *
+     * Policy note: Public Nominatim does not allow autocomplete; we throttle to 1 req/s and cache.
+     * For production address suggestions, prefer Mapbox or a self-hosted Nominatim instance.
+     * OSM address data is often incomplete – many fields can be null depending on the result type.
+     */
+    protected function getAddressSuggestionsOpenStreetMap(string $query, int $limit): array
+    {
+        $lock = Cache::lock('nominatim_suggestion', 1);
+        $lock->block(2);
+
+        try {
+            $response = Http::timeout($this->suggestionTimeout)
+                ->withHeaders(['User-Agent' => config('app.name', 'Flipzy') . '/1.0'])
+                ->get('https://nominatim.openstreetmap.org/search', [
+                    'q' => $query,
+                    'format' => 'json',
+                    'limit' => min($limit, 10),
+                    'addressdetails' => 1,
+                    'countrycodes' => 'us',
+                ]);
+
+            if (!$response->successful() || !is_array($response->json())) {
+                return [];
+            }
+
+            $items = $response->json();
+            $suggestions = [];
+
+            foreach ($items as $item) {
+                $addr = $item['address'] ?? [];
+                $houseNumber = $this->nullIfEmpty(trim($addr['house_number'] ?? ''));
+                $road = $this->nullIfEmpty(trim($addr['road'] ?? ''));
+                $this->normalizeNominatimStreetComponents($houseNumber, $road);
+                $street = trim(($houseNumber ?? '') . ' ' . ($road ?? ''));
+                $city = $this->extractCityFromNominatimAddress($addr);
+                $stateRaw = $this->nullIfEmpty($addr['state'] ?? null);
+                $stateCode = $this->usStateAbbrev($stateRaw);
+                $postcode = $this->nullIfEmpty($addr['postcode'] ?? null);
+
+                $formattedAddress = $this->formatAddressForAttom($street, $city, $stateCode ?? $stateRaw, $postcode);
+                if ($formattedAddress === '') {
+                    $formattedAddress = strtoupper(trim(mb_substr($item['display_name'] ?? 'Address', 0, 80)));
+                }
+
+                $components = [
+                    'street' => $houseNumber,
+                    'road' => $road,
+                    'city' => $city,
+                    'state' => $stateRaw,
+                    'state_code' => $stateCode,
+                    'postcode' => $postcode,
+                    'country' => $this->nullIfEmpty($addr['country'] ?? null),
+                ];
+
+                $suggestions[] = [
+                    'formatted_address' => $formattedAddress,
+                    'latitude' => (float) ($item['lat'] ?? 0),
+                    'longitude' => (float) ($item['lon'] ?? 0),
+                    'place_id' => (string) ($item['place_id'] ?? ''),
+                    'address_components' => $components,
+                ];
+            }
+
+            return $suggestions;
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Normalize OSM quirks: Nominatim sometimes puts a house number in 'road' and leaves 'house_number' empty.
+     * When road is just a number (e.g. "468"), treat it as house number so street/road components make sense.
+     */
+    protected function normalizeNominatimStreetComponents(?string &$houseNumber, ?string &$road): void
+    {
+        if ($houseNumber !== null && $houseNumber !== '') {
+            return;
+        }
+        if ($road === null || $road === '') {
+            return;
+        }
+        $trimmed = trim($road);
+        if ($trimmed === '' || !ctype_digit($trimmed)) {
+            return;
+        }
+        $houseNumber = $trimmed;
+        $road = null;
+    }
+
+    /**
+     * Extract city/locality from Nominatim address. OSM uses different keys by region and result type.
+     */
+    protected function extractCityFromNominatimAddress(array $addr): ?string
+    {
+        $keys = ['city', 'town', 'village', 'municipality', 'hamlet', 'locality', 'county', 'state_district'];
+        foreach ($keys as $key) {
+            $v = $addr[$key] ?? null;
+            if ($v !== null && trim((string) $v) !== '') {
+                return $this->nullIfEmpty(trim((string) $v));
+            }
+        }
+        return null;
+    }
+
+    /** Normalize empty or non-string to null for consistent JSON (OSM data can be missing or inconsistent). */
+    protected function nullIfEmpty(mixed $value): ?string
+    {
+        if ($value === null || !is_string($value)) {
+            return null;
+        }
+        $trimmed = trim($value);
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    /**
+     * Format address for ATTOM search: "STREET, CITY, STATE ZIP" (uppercase).
+     * Example: "468 SEQUOIA DR, SMYRNA, DE 19977"
+     */
+    protected function formatAddressForAttom(string $street, ?string $city, ?string $state, ?string $postcode): string
+    {
+        $stateCode = $this->usStateAbbrev($state);
+        $statePart = $stateCode ?? trim($state ?? '');
+        $parts = array_filter([
+            trim($street),
+            trim($city ?? ''),
+            trim($statePart . ($postcode ? ' ' . trim($postcode) : '')),
+        ]);
+
+        return strtoupper(implode(', ', $parts));
+    }
+
+    /**
+     * US state name to 2-letter code (e.g. "Delaware" -> "DE")
+     */
+    protected function usStateAbbrev(?string $state): ?string
+    {
+        if ($state === null || $state === '') {
+            return null;
+        }
+        $key = strtolower(trim($state));
+        if (strlen($key) === 2) {
+            return strtoupper($key);
+        }
+        return self::US_STATE_ABBREV[$key] ?? null;
+    }
+
+    /**
+     * Map Mapbox context array to address_components
+     */
+    protected function mapMapboxContextToComponents(array $context): array
+    {
+        $components = [
+            'street' => null,
+            'road' => null,
+            'city' => null,
+            'state' => null,
+            'postcode' => null,
+            'country' => null,
+        ];
+
+        foreach ($context as $item) {
+            $id = $item['id'] ?? '';
+            $text = $item['text'] ?? null;
+            if (str_contains($id, 'place.')) {
+                $components['city'] = $text;
+            } elseif (str_contains($id, 'region.')) {
+                $components['state'] = $text;
+            } elseif (str_contains($id, 'postcode.')) {
+                $components['postcode'] = $text;
+            } elseif (str_contains($id, 'country.')) {
+                $components['country'] = $text;
+            }
+        }
+
+        return $components;
     }
 
     /**
@@ -94,7 +399,7 @@ class GeoService
     public function reverseGeocode(float $latitude, float $longitude): ?array
     {
         $cacheKey = "geo:reverse:{$latitude}:{$longitude}";
-        
+
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($latitude, $longitude) {
             try {
                 if ($this->service === 'mapbox' && $this->mapboxToken) {
