@@ -21,10 +21,25 @@ class PasswordGrantService
 
     /**
      * Get or create password grant client
-     * Returns array with id and plain secret (since Passport hashes secrets)
+     * Returns array with id and plain secret (since Passport hashes secrets).
+     * Prefers .env (PASSPORT_PASSWORD_GRANT_CLIENT_ID / PASSPORT_PASSWORD_GRANT_CLIENT_SECRET) so auth keeps working when cache is lost.
      */
     public function getPasswordGrantClient(): array
     {
+        // Prefer .env so login works even after cache clear / container restart
+        $envId = config('services.passport.password_grant_client_id');
+        $envSecret = config('services.passport.password_grant_client_secret');
+        if ($envId && $envSecret) {
+            $exists = DB::table('oauth_clients')
+                ->where('id', $envId)
+                ->where('grant_types', 'like', '%password%')
+                ->where('revoked', false)
+                ->exists();
+            if ($exists) {
+                return ['id' => $envId, 'secret' => $envSecret];
+            }
+        }
+
         $client = DB::table('oauth_clients')
             ->where('grant_types', 'like', '%password%')
             ->where('revoked', false)
@@ -129,7 +144,6 @@ class PasswordGrantService
             'body' => $response->getContent(),
             'email' => $email,
             'client_id' => $client['id'],
-            'grant_types_in_db' => $clientRecord->grant_types ?? 'not found',
         ]);
 
         throw new \Exception('Failed to generate access token: ' . ($responseData['message'] ?? $response->getContent()));

@@ -50,6 +50,8 @@ class EnsurePasswordGrantClient extends Command
                     if ($dbClient && !str_starts_with($dbClient->secret ?? '', '$2y$')) {
                         Cache::forever("passport_client_secret_{$client->id}", $dbClient->secret);
                         $this->info("Password grant client already exists (secret cached):");
+                        $this->printEnvHint($client->id, $dbClient->secret);
+                        return 0;
                     } else {
                         $this->warn("Password grant client exists but secret is hashed. Recreating...");
                         // Revoke old client
@@ -66,6 +68,7 @@ class EnsurePasswordGrantClient extends Command
                 if ($client && $cachedSecret) {
                     $this->line("  ID: {$client->id}");
                     $this->line("  Name: {$client->name}");
+                    $this->printEnvHint($client->id, $cachedSecret);
                     return 0;
                 }
             }
@@ -94,11 +97,23 @@ class EnsurePasswordGrantClient extends Command
             $this->line("  ID: {$clientId}");
             $this->line("  Name: Flipzy Password Grant Client");
             $this->line("  Secret: {$plainSecret}");
+            $this->printEnvHint($clientId, $plainSecret);
             return 0;
         } catch (\Exception $e) {
             $this->error("Failed to create password grant client: " . $e->getMessage());
             return 1;
         }
+    }
+
+    /**
+     * Print .env lines so auth keeps working when cache is lost (e.g. container restart).
+     */
+    protected function printEnvHint(string $clientId, string $secret): void
+    {
+        $this->newLine();
+        $this->comment('Add to .env to avoid "Password grant client secret not available" when cache is lost:');
+        $this->line("PASSPORT_PASSWORD_GRANT_CLIENT_ID={$clientId}");
+        $this->line("PASSPORT_PASSWORD_GRANT_CLIENT_SECRET={$secret}");
     }
 }
 

@@ -364,21 +364,21 @@ class RehabEstimateController extends Controller
             'use_calculations' => 'nullable|boolean',
         ]);
 
-        // Check rate limit (unless admin)
-        if (!$user->hasRole('admin')) {
-            $rateLimitKey = "rehab_estimate_preview:{$user->id}";
-            $maxAttempts = $this->getRateLimit($user);
-
-            if (RateLimiter::tooManyAttempts($rateLimitKey, $maxAttempts)) {
-                $seconds = RateLimiter::availableIn($rateLimitKey);
-                return response()->json([
-                    'success' => false,
-                    'message' => "Rate limit exceeded. Please try again in {$seconds} seconds.",
-                ], 429);
-            }
-
-            RateLimiter::hit($rateLimitKey, 86400); // 24 hour window
-        }
+        // Check rate limit (unless admin) Rethink the whole logic
+//        if (!$user->hasRole('admin')) {
+//            $rateLimitKey = "rehab_estimate_preview:{$user->id}";
+//            $maxAttempts = $this->getRateLimit($user);
+//
+//            if (RateLimiter::tooManyAttempts($rateLimitKey, $maxAttempts)) {
+//                $seconds = RateLimiter::availableIn($rateLimitKey);
+//                return response()->json([
+//                    'success' => false,
+//                    'message' => "Rate limit exceeded. Please try again in {$seconds} seconds.",
+//                ], 429);
+//            }
+//
+//            RateLimiter::hit($rateLimitKey, 86400); // 24 hour window
+//        }
 
         // Transform property_data to match expected format
         $propertyData = [

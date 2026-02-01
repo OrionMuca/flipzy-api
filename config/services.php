@@ -141,4 +141,17 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Passport Password Grant (login / register token)
+    |--------------------------------------------------------------------------
+    | If set, auth works even when cache is lost (e.g. container restart, cache:clear).
+    | Run: php artisan passport:ensure-password-grant-client
+    | Then copy the printed ID and secret into .env.
+    */
+    'passport' => [
+        'password_grant_client_id' => env('PASSPORT_PASSWORD_GRANT_CLIENT_ID'),
+        'password_grant_client_secret' => env('PASSPORT_PASSWORD_GRANT_CLIENT_SECRET'),
+    ],
+
 ];
