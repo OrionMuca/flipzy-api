@@ -49,6 +49,13 @@ class PropertyResource extends JsonResource
                 'repair_estimate' => $this->repair_estimate,
                 'potential_profit' => $this->potential_profit,
             ],
+
+            // Latest AI rehab estimate (when loaded; property can have many, we return the most recent)
+            'rehab_estimate' => $this->whenLoaded(
+                'latestRehabEstimate',
+                fn () => new RehabEstimateResource($this->latestRehabEstimate),
+                null
+            ),
             
             // Images (ordered by 'order' field - maintained by Property model relationship)
             'images' => PropertyImageResource::collection(

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Property extends Model
@@ -124,11 +125,11 @@ class Property extends Model
     }
 
     /**
-     * Get the latest rehab estimate
+     * Get the latest rehab estimate (single record, by created_at)
      */
-    public function latestRehabEstimate(): HasMany
+    public function latestRehabEstimate(): HasOne
     {
-        return $this->hasMany(PropertyRehabEstimate::class)->latest();
+        return $this->hasOne(PropertyRehabEstimate::class)->latestOfMany('created_at');
     }
 
     /**

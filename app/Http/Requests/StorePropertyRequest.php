@@ -58,6 +58,15 @@ class StorePropertyRequest extends FormRequest
             'images' => 'nullable|array|max:10',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max per image
             'primary_image_index' => 'nullable|integer|min:0',
+
+            // Rehab estimate from preview (optional; stored as PropertyRehabEstimate). May be array or JSON string (multipart).
+            'rehab_estimate' => 'nullable',
+            'rehab_estimate.estimated_cost' => 'nullable|numeric|min:0',
+            'rehab_estimate.breakdown' => 'nullable|array',
+            'rehab_estimate.model_used' => 'nullable|string|max:64',
+            'rehab_estimate.property_data' => 'nullable|array',
+            'rehab_estimate.notes' => 'nullable|string',
+            'rehab_estimate.tokens_used' => 'nullable|integer|min:0',
         ];
     }
 

@@ -79,7 +79,7 @@ class AdminPropertyController extends Controller
     )]
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Property::with(['wholesaler', 'images']);
+        $query = Property::with(['wholesaler', 'images', 'latestRehabEstimate']);
 
         // Filter by status
         if ($request->has('status')) {
@@ -159,7 +159,7 @@ class AdminPropertyController extends Controller
     )]
     public function show(Property $property): JsonResponse
     {
-        $property->load(['wholesaler', 'images', 'analytics', 'rehabEstimates']);
+        $property->load(['wholesaler', 'images', 'analytics', 'rehabEstimates', 'latestRehabEstimate']);
 
         return response()->json([
             'success' => true,
@@ -217,7 +217,7 @@ class AdminPropertyController extends Controller
 
         $property->update($validated);
 
-        $property->load(['wholesaler', 'images']);
+        $property->load(['wholesaler', 'images', 'latestRehabEstimate']);
 
         return response()->json([
             'success' => true,
@@ -292,7 +292,7 @@ class AdminPropertyController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Property approved successfully',
-            'data' => new PropertyResource($property->load(['wholesaler', 'images'])),
+            'data' => new PropertyResource($property->load(['wholesaler', 'images', 'latestRehabEstimate'])),
         ]);
     }
 
@@ -342,7 +342,7 @@ class AdminPropertyController extends Controller
         return response()->json([
             'success' => true,
             'message' => $request->boolean('featured') ? 'Property featured successfully' : 'Property unfeatured successfully',
-            'data' => new PropertyResource($property->load(['wholesaler', 'images'])),
+            'data' => new PropertyResource($property->load(['wholesaler', 'images', 'latestRehabEstimate'])),
         ]);
     }
 
@@ -378,7 +378,7 @@ class AdminPropertyController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Property verified successfully',
-            'data' => new PropertyResource($property->load(['wholesaler', 'images'])),
+            'data' => new PropertyResource($property->load(['wholesaler', 'images', 'latestRehabEstimate'])),
         ]);
     }
 }

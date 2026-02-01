@@ -107,6 +107,11 @@ class PropertyController extends Controller
                         new OA\Property(property: "status", type: "string", enum: ["active", "pending", "sold"], example: "active"),
                         new OA\Property(property: "images", type: "array", items: new OA\Items(type: "string", format: "binary")),
                         new OA\Property(property: "primary_image_index", type: "integer", example: 0),
+                        new OA\Property(
+                            property: "rehab_estimate",
+                            type: "object",
+                            description: "Optional. Rehab estimate from preview endpoint (POST /properties/preview/rehab-estimate). Stored as PropertyRehabEstimate and sets repair_estimate."
+                        ),
                     ]
                 )
             )
@@ -156,7 +161,7 @@ class PropertyController extends Controller
     )]
     public function show(Property $property): JsonResponse
     {
-        $property->load(['wholesaler', 'images', 'primaryImage']);
+        $property->load(['wholesaler', 'images', 'primaryImage', 'latestRehabEstimate']);
 
         return response()->json([
             'success' => true,
@@ -891,7 +896,7 @@ public function lookup(Request $request): JsonResponse
 
         $perPage = (int) $request->get('per_page', 15);
 
-        $query = Property::with(['wholesaler', 'images', 'primaryImage'])
+        $query = Property::with(['wholesaler', 'images', 'primaryImage', 'latestRehabEstimate'])
             ->where('wholesaler_id', $user->id);
 
         if ($request->filled('status')) {

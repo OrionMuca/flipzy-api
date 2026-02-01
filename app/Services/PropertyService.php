@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Property;
 use App\Models\PropertyImage;
+use App\Models\PropertyRehabEstimate;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -33,6 +34,13 @@ class PropertyService
         $primaryImageIndex = $data['primary_image_index'] ?? 0;
         unset($data['images'], $data['primary_image_index']);
 
+        // Extract rehab estimate from preview (persist after property is created)
+        $rehabEstimatePayload = $data['rehab_estimate'] ?? null;
+        unset($data['rehab_estimate']);
+        if (is_string($rehabEstimatePayload)) {
+            $rehabEstimatePayload = json_decode($rehabEstimatePayload, true) ?: null;
+        }
+
         $property = Property::create($data);
 
         // Upload images if provided
@@ -40,7 +48,55 @@ class PropertyService
             $this->uploadImages($property, $images, $primaryImageIndex);
         }
 
-        return $property->load('wholesaler', 'images');
+        // Persist AI/calculation rehab estimate used during creation (from preview)
+        if (!empty($rehabEstimatePayload) && isset($rehabEstimatePayload['estimated_cost'])) {
+            $this->attachRehabEstimateFromPreview($property, $rehabEstimatePayload, $wholesaler);
+        }
+
+        return $property->load('wholesaler', 'images', 'latestRehabEstimate');
+    }
+
+    /**
+     * Persist the rehab estimate used during property creation (from preview endpoint).
+     * Creates a PropertyRehabEstimate and syncs property.repair_estimate.
+     */
+    protected function attachRehabEstimateFromPreview(Property $property, array $payload, User $user): void
+    {
+        $estimatedCost = (float) ($payload['estimated_cost'] ?? 0);
+        $propertyData = $payload['property_data'] ?? null;
+        $modelUsed = $payload['model_used'] ?? 'calculation-fallback';
+        $tokensUsed = $payload['tokens_used'] ?? null;
+
+        // Full estimate as stored by RehabEstimateService (breakdown, notes, confidence, etc.)
+        $aiResponse = json_encode([
+            'estimated_cost' => $estimatedCost,
+            'breakdown' => $payload['breakdown'] ?? [],
+            'labor_percentage' => $payload['labor_percentage'] ?? null,
+            'materials_percentage' => $payload['materials_percentage'] ?? null,
+            'timeline_weeks' => $payload['timeline_weeks'] ?? null,
+            'risk_factors' => $payload['risk_factors'] ?? [],
+            'notes' => $payload['notes'] ?? '',
+            'confidence' => $payload['confidence'] ?? 'medium',
+            'model_used' => $modelUsed,
+        ]);
+
+        PropertyRehabEstimate::create([
+            'property_id' => $property->id,
+            'requested_by' => $user->id,
+            'ai_response' => $aiResponse,
+            'property_data' => $propertyData,
+            'model_used' => $modelUsed,
+            'estimated_cost' => $estimatedCost,
+            'tokens_used' => $tokensUsed,
+        ]);
+
+        // Sync single repair_estimate on property for display / potential_profit
+        $property->update([
+            'repair_estimate' => $estimatedCost,
+            'potential_profit' => $property->arv && $property->asking_price
+                ? $property->arv - $property->asking_price - $estimatedCost
+                : $property->potential_profit,
+        ]);
     }
 
     /**
@@ -195,7 +251,7 @@ class PropertyService
      */
     public function getFiltered(array $filters = [], int $perPage = 15)
     {
-        $query = Property::with(['wholesaler', 'images']);
+        $query = Property::with(['wholesaler', 'images', 'latestRehabEstimate']);
 
         // Filter by city
         if (isset($filters['city'])) {
