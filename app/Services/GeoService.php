@@ -144,51 +144,60 @@ class GeoService
     }
 
     /**
-     * Address suggestions via Mapbox Geocoding API
+     * Address suggestions via Mapbox Search Box API (v1).
+     * Uses /suggest for fast autocomplete. Returns mapbox_id (place_id) so the
+     * frontend can call /retrieve later when the user selects a suggestion.
+     * Docs: https://docs.mapbox.com/api/search/search-box/
      */
     protected function getAddressSuggestionsMapbox(string $query, int $limit): array
     {
-        $encoded = rawurlencode($query);
         $response = Http::timeout($this->suggestionTimeout)
-            ->get("https://api.mapbox.com/geocoding/v5/mapbox.places/{$encoded}.json", [
+            ->get('https://api.mapbox.com/search/searchbox/v1/suggest', [
+                'q' => $query,
                 'access_token' => $this->mapboxToken,
-                'types' => 'address,place,postcode',
+                'session_token' => (string) \Illuminate\Support\Str::uuid(),
+                'types' => 'address,street,place,postcode',
                 'country' => 'US',
+                'language' => 'en',
                 'limit' => min($limit, 10),
             ]);
 
         if (!$response->successful()) {
+            Log::warning('Mapbox Search Box suggest error', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
             return [];
         }
 
-        $data = $response->json();
-        $features = $data['features'] ?? [];
+        $items = $response->json()['suggestions'] ?? [];
         $suggestions = [];
 
-        foreach ($features as $feature) {
-            $coordinates = $feature['geometry']['coordinates'] ?? [];
-            $context = $feature['context'] ?? [];
-            $components = $this->mapMapboxContextToComponents($context);
+        foreach ($items as $item) {
+            $mapboxId = $item['mapbox_id'] ?? '';
+            if ($mapboxId === '') {
+                continue;
+            }
 
-            // Build street: first part of place_name, or address number + text
-            $placeName = $feature['place_name'] ?? '';
-            $street = $this->extractStreetFromMapboxFeature($feature, $placeName);
+            $featureType = $item['feature_type'] ?? '';
+            $context = $item['context'] ?? [];
+            $components = $this->mapSearchBoxContextToComponents($context);
 
+            $street = $this->extractStreetFromSuggestionItem($item, $context);
             $city = $components['city'];
             $stateRaw = $components['state'];
-            $stateCode = $this->usStateAbbrev($stateRaw);
+            $stateCode = $components['state_code'];
             $postcode = $components['postcode'];
 
-            $placeType = $feature['place_type'][0] ?? '';
-            $displayStreet = in_array($placeType, ['place', 'postcode'], true) ? '' : ($street ?: $placeName);
+            $displayStreet = in_array($featureType, ['place', 'postcode', 'street'], true)
+                ? ($featureType === 'street' ? $street : '')
+                : $street;
             $formattedAddress = $this->formatAddressForAttom($displayStreet, $city, $stateCode ?? $stateRaw, $postcode);
 
-            $components['state_code'] = $stateCode;
             $suggestions[] = [
                 'formatted_address' => $formattedAddress,
-                'latitude' => (float) ($coordinates[1] ?? 0),
-                'longitude' => (float) ($coordinates[0] ?? 0),
-                'place_id' => $feature['id'] ?? '',
+                'result_type' => $featureType,
+                'place_id' => $mapboxId,
                 'address_components' => $components,
             ];
         }
@@ -197,21 +206,30 @@ class GeoService
     }
 
     /**
-     * Extract street line from Mapbox feature (for ATTOM format)
+     * Extract street line from a /suggest item and its context.
      */
-    protected function extractStreetFromMapboxFeature(array $feature, string $placeName): string
+    protected function extractStreetFromSuggestionItem(array $item, array $context): string
     {
-        $props = $feature['properties'] ?? [];
-        $addressNumber = trim($props['address'] ?? '');
-        $text = trim($feature['text'] ?? '');
-        if ($addressNumber !== '' && $text !== '') {
-            return $addressNumber . ' ' . $text;
+        $addressCtx = $context['address'] ?? [];
+        $addressNumber = trim($addressCtx['address_number'] ?? '');
+        $streetName = trim($addressCtx['street_name'] ?? $context['street']['name'] ?? '');
+
+        if ($addressNumber !== '' && $streetName !== '') {
+            return $addressNumber . ' ' . $streetName;
         }
-        if ($text !== '') {
-            return $text;
+        if ($streetName !== '') {
+            return $streetName;
         }
-        $parts = array_map('trim', explode(',', $placeName));
-        return $parts[0] ?? $placeName;
+
+        // Fallback to item name or first segment of full_address
+        $name = trim($item['name'] ?? '');
+        if ($name !== '') {
+            return $name;
+        }
+
+        $fullAddress = $item['full_address'] ?? '';
+        $parts = array_map('trim', explode(',', $fullAddress));
+        return $parts[0] ?? '';
     }
 
     /**
@@ -363,34 +381,24 @@ class GeoService
     }
 
     /**
-     * Map Mapbox context array to address_components
+     * Map Search Box API context object to address_components.
+     * The Search Box API returns context as a structured object (not an array like V5).
      */
-    protected function mapMapboxContextToComponents(array $context): array
+    protected function mapSearchBoxContextToComponents(array $context): array
     {
-        $components = [
-            'street' => null,
-            'road' => null,
-            'city' => null,
-            'state' => null,
-            'postcode' => null,
-            'country' => null,
+        $addressCtx = $context['address'] ?? [];
+        $regionCtx = $context['region'] ?? [];
+        $stateName = $regionCtx['name'] ?? null;
+
+        return [
+            'street' => $addressCtx['address_number'] ?? null,
+            'road' => $addressCtx['street_name'] ?? $context['street']['name'] ?? null,
+            'city' => $context['place']['name'] ?? $context['locality']['name'] ?? null,
+            'state' => $stateName,
+            'state_code' => $regionCtx['region_code'] ?? $this->usStateAbbrev($stateName),
+            'postcode' => $context['postcode']['name'] ?? null,
+            'country' => $context['country']['name'] ?? null,
         ];
-
-        foreach ($context as $item) {
-            $id = $item['id'] ?? '';
-            $text = $item['text'] ?? null;
-            if (str_contains($id, 'place.')) {
-                $components['city'] = $text;
-            } elseif (str_contains($id, 'region.')) {
-                $components['state'] = $text;
-            } elseif (str_contains($id, 'postcode.')) {
-                $components['postcode'] = $text;
-            } elseif (str_contains($id, 'country.')) {
-                $components['country'] = $text;
-            }
-        }
-
-        return $components;
     }
 
     /**
@@ -421,8 +429,9 @@ class GeoService
     {
         $startTime = microtime(true);
 
+        $encoded = rawurlencode($address);
         $response = Http::timeout($this->timeout)
-            ->get("https://api.mapbox.com/geocoding/v5/mapbox.places/{$address}.json", [
+            ->get("https://api.mapbox.com/geocoding/v5/mapbox.places/{$encoded}.json", [
                 'access_token' => $this->mapboxToken,
                 'limit' => 1,
             ]);
