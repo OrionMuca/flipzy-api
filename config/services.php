@@ -64,8 +64,9 @@ return [
     ],
 
     'geo' => [
-        'service' => env('GEO_SERVICE', 'openstreetmap'), // openstreetmap or mapbox
+        'service' => env('GEO_SERVICE', 'openstreetmap'), // openstreetmap, mapbox, or google
         'mapbox_token' => env('MAPBOX_ACCESS_TOKEN'),
+        'google_places_api_key' => env('GOOGLE_PLACES_API_KEY'),
     ],
 
     'openai' => [

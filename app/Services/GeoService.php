@@ -12,6 +12,7 @@ class GeoService
 {
     protected string $service;
     protected ?string $mapboxToken;
+    protected ?string $googlePlacesApiKey;
     protected int $timeout = 10;
 
     /** Shorter timeout for address suggestions so UI doesn't hang (Nominatim can be slow). */
@@ -38,6 +39,7 @@ class GeoService
     {
         $this->service = config('services.geo.service', env('GEO_SERVICE', 'openstreetmap'));
         $this->mapboxToken = config('services.geo.mapbox_token', env('MAPBOX_ACCESS_TOKEN'));
+        $this->googlePlacesApiKey = config('services.geo.google_places_api_key', env('GOOGLE_PLACES_API_KEY'));
     }
 
     /**
@@ -123,24 +125,21 @@ class GeoService
             return [];
         }
 
-        $normalized = preg_replace('/\s+/', ' ', strtolower($query));
-        $cacheKey = 'address_suggestions:' . md5($normalized . '|' . $limit);
-        $ttl = now()->addHours(24);
-
-        return Cache::remember($cacheKey, $ttl, function () use ($query, $limit) {
-            try {
-                if ($this->service === 'mapbox' && $this->mapboxToken) {
-                    return $this->getAddressSuggestionsMapbox($query, $limit);
-                }
-                return $this->getAddressSuggestionsOpenStreetMap($query, $limit);
-            } catch (\Exception $e) {
-                Log::error('Address suggestions exception', [
-                    'message' => $e->getMessage(),
-                    'query' => $query,
-                ]);
-                return [];
+        try {
+            if ($this->service === 'google' && $this->googlePlacesApiKey) {
+                return $this->getAddressSuggestionsGoogle($query, $limit);
             }
-        });
+            if ($this->service === 'mapbox' && $this->mapboxToken) {
+                return $this->getAddressSuggestionsMapbox($query, $limit);
+            }
+            return $this->getAddressSuggestionsOpenStreetMap($query, $limit);
+        } catch (\Exception $e) {
+            Log::error('Address suggestions exception', [
+                'message' => $e->getMessage(),
+                'query' => $query,
+            ]);
+            return [];
+        }
     }
 
     /**
@@ -156,7 +155,7 @@ class GeoService
                 'q' => $query,
                 'access_token' => $this->mapboxToken,
                 'session_token' => (string) \Illuminate\Support\Str::uuid(),
-                'types' => 'address,street,place,postcode',
+                'types' => 'address',
                 'country' => 'US',
                 'language' => 'en',
                 'limit' => min($limit, 10),
@@ -207,9 +206,21 @@ class GeoService
 
     /**
      * Extract street line from a /suggest item and its context.
+     *
+     * Prefer item['name'] because Mapbox context.address.street_name strips
+     * directional suffixes (S, N, E, W, NE, NW, SE, SW) from street names.
+     * e.g. "Lake Woodbourne Drive" instead of "Lake Woodbourne Drive South".
+     * The item name contains the complete street address with all suffixes.
      */
     protected function extractStreetFromSuggestionItem(array $item, array $context): string
     {
+        // Prefer item name – it preserves directional suffixes (S, N, E, W, etc.)
+        $name = trim($item['name'] ?? '');
+        if ($name !== '') {
+            return $name;
+        }
+
+        // Fallback: reconstruct from context components
         $addressCtx = $context['address'] ?? [];
         $addressNumber = trim($addressCtx['address_number'] ?? '');
         $streetName = trim($addressCtx['street_name'] ?? $context['street']['name'] ?? '');
@@ -221,15 +232,276 @@ class GeoService
             return $streetName;
         }
 
-        // Fallback to item name or first segment of full_address
-        $name = trim($item['name'] ?? '');
-        if ($name !== '') {
-            return $name;
-        }
-
+        // Last resort: first segment of full_address
         $fullAddress = $item['full_address'] ?? '';
         $parts = array_map('trim', explode(',', $fullAddress));
         return $parts[0] ?? '';
+    }
+
+    /**
+     * Address suggestions via Google Places Autocomplete (classic API).
+     *
+     * Two-step flow:
+     * 1. Autocomplete to get predictions as user types
+     * 2. Place Details (in parallel) to get structured address_components
+     *
+     * Session tokens tie autocomplete + details calls together for billing optimization.
+     */
+    protected function getAddressSuggestionsGoogle(string $query, int $limit): array
+    {
+        $sessionToken = (string) \Illuminate\Support\Str::uuid();
+
+        $response = Http::timeout($this->suggestionTimeout)
+            ->get('https://maps.googleapis.com/maps/api/place/autocomplete/json', [
+                'input' => $query,
+                'key' => $this->googlePlacesApiKey,
+                'sessiontoken' => $sessionToken,
+                'types' => 'address',
+                'components' => 'country:us',
+                'language' => 'en',
+            ]);
+
+        if (!$response->successful()) {
+            Log::warning('Google Places autocomplete error', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            return [];
+        }
+
+        $data = $response->json();
+        if (($data['status'] ?? '') !== 'OK') {
+            if (($data['status'] ?? '') !== 'ZERO_RESULTS') {
+                Log::warning('Google Places autocomplete non-OK status', [
+                    'status' => $data['status'] ?? 'unknown',
+                    'error_message' => $data['error_message'] ?? null,
+                ]);
+            }
+            return [];
+        }
+
+        $predictions = array_slice($data['predictions'] ?? [], 0, $limit);
+        if (empty($predictions)) {
+            return [];
+        }
+
+        $details = $this->fetchGooglePlaceDetailsBatch($predictions, $sessionToken);
+        $suggestions = [];
+
+        foreach ($predictions as $prediction) {
+            $placeId = $prediction['place_id'] ?? '';
+            if ($placeId === '') {
+                continue;
+            }
+
+            $resultType = $this->mapGoogleTypesToResultType($prediction['types'] ?? []);
+
+            if (isset($details[$placeId])) {
+                $components = $this->mapGoogleAddressComponents($details[$placeId]);
+            } else {
+                $components = $this->parseGoogleAutocompleteTerms($prediction);
+            }
+
+            $street = trim(($components['street'] ?? '') . ' ' . ($components['road'] ?? ''));
+            $formattedAddress = $this->formatAddressForAttom(
+                $street,
+                $components['city'],
+                $components['state_code'] ?? $components['state'],
+                $components['postcode']
+            );
+
+            if ($formattedAddress === '') {
+                $formattedAddress = strtoupper(trim($prediction['description'] ?? 'Address'));
+            }
+
+            $suggestions[] = [
+                'formatted_address' => $formattedAddress,
+                'place_id' => $placeId,
+                'result_type' => $resultType,
+                'address_components' => $components,
+            ];
+        }
+
+        return $suggestions;
+    }
+
+    /**
+     * Fetch Place Details for multiple predictions in parallel using Http::pool().
+     *
+     * @return array<string, array> Keyed by place_id → address_components array from Google
+     */
+    protected function fetchGooglePlaceDetailsBatch(array $predictions, string $sessionToken): array
+    {
+        $placeIds = [];
+        foreach ($predictions as $prediction) {
+            $pid = $prediction['place_id'] ?? '';
+            if ($pid !== '') {
+                $placeIds[] = $pid;
+            }
+        }
+
+        if (empty($placeIds)) {
+            return [];
+        }
+
+        $responses = Http::pool(function (\Illuminate\Http\Client\Pool $pool) use ($placeIds, $sessionToken) {
+            foreach ($placeIds as $placeId) {
+                $pool->as($placeId)
+                    ->timeout($this->suggestionTimeout)
+                    ->get('https://maps.googleapis.com/maps/api/place/details/json', [
+                        'place_id' => $placeId,
+                        'key' => $this->googlePlacesApiKey,
+                        'sessiontoken' => $sessionToken,
+                        'fields' => 'address_component',
+                    ]);
+            }
+        });
+
+        $results = [];
+        foreach ($placeIds as $placeId) {
+            $resp = $responses[$placeId] ?? null;
+            if ($resp && $resp->successful()) {
+                $body = $resp->json();
+                if (($body['status'] ?? '') === 'OK') {
+                    $results[$placeId] = $body['result']['address_components'] ?? [];
+                }
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Map Google address_components to our standard format.
+     *
+     * Google returns components like:
+     *   { "long_name": "4370", "short_name": "4370", "types": ["street_number"] }
+     *   { "long_name": "Lake Woodbourne Drive South", "short_name": "Lake Woodbourne Dr S", "types": ["route"] }
+     */
+    protected function mapGoogleAddressComponents(array $components): array
+    {
+        $mapped = [
+            'street' => null,
+            'road' => null,
+            'city' => null,
+            'state' => null,
+            'state_code' => null,
+            'postcode' => null,
+            'country' => null,
+        ];
+
+        foreach ($components as $component) {
+            $types = $component['types'] ?? [];
+            $longName = $component['long_name'] ?? null;
+            $shortName = $component['short_name'] ?? null;
+
+            if (in_array('street_number', $types, true)) {
+                $mapped['street'] = $shortName;
+            } elseif (in_array('route', $types, true)) {
+                $mapped['road'] = $shortName ?? $longName;
+            } elseif (in_array('locality', $types, true)) {
+                $mapped['city'] = $longName;
+            } elseif (in_array('administrative_area_level_1', $types, true)) {
+                $mapped['state'] = $longName;
+                $mapped['state_code'] = $shortName;
+            } elseif (in_array('postal_code', $types, true)) {
+                $mapped['postcode'] = $shortName ?? $longName;
+            } elseif (in_array('country', $types, true)) {
+                $mapped['country'] = $longName;
+            }
+        }
+
+        return $mapped;
+    }
+
+    /**
+     * Fallback: parse autocomplete prediction terms when Place Details fails.
+     *
+     * Google autocomplete returns "terms" like:
+     *   [{ "value": "4370 Lake Woodbourne Drive South" }, { "value": "Jacksonville" }, { "value": "FL" }, { "value": "USA" }]
+     */
+    protected function parseGoogleAutocompleteTerms(array $prediction): array
+    {
+        $terms = $prediction['terms'] ?? [];
+        $structuredFormatting = $prediction['structured_formatting'] ?? [];
+
+        $street = null;
+        $road = null;
+        $city = null;
+        $state = null;
+        $stateCode = null;
+
+        if (!empty($terms)) {
+            $values = array_map(fn($t) => $t['value'] ?? '', $terms);
+
+            // First term is typically the street address
+            if (isset($values[0])) {
+                $streetLine = $values[0];
+                if (preg_match('/^(\d+)\s+(.+)$/', $streetLine, $m)) {
+                    $street = $m[1];
+                    $road = $m[2];
+                } else {
+                    $road = $streetLine;
+                }
+            }
+            // Second term is typically the city
+            $city = $values[1] ?? null;
+            // Third term is typically the state
+            $stateRaw = $values[2] ?? null;
+            if ($stateRaw) {
+                $state = $stateRaw;
+                $stateCode = $this->usStateAbbrev($stateRaw);
+            }
+        } elseif (!empty($structuredFormatting)) {
+            $mainText = $structuredFormatting['main_text'] ?? '';
+            if (preg_match('/^(\d+)\s+(.+)$/', $mainText, $m)) {
+                $street = $m[1];
+                $road = $m[2];
+            } else {
+                $road = $mainText;
+            }
+            $secondary = $structuredFormatting['secondary_text'] ?? '';
+            $parts = array_map('trim', explode(',', $secondary));
+            $city = $parts[0] ?? null;
+            if (isset($parts[1])) {
+                $stateRaw = trim($parts[1]);
+                $state = $stateRaw;
+                $stateCode = $this->usStateAbbrev($stateRaw);
+            }
+        }
+
+        return [
+            'street' => $this->nullIfEmpty($street),
+            'road' => $this->nullIfEmpty($road),
+            'city' => $this->nullIfEmpty($city),
+            'state' => $this->nullIfEmpty($state),
+            'state_code' => $this->nullIfEmpty($stateCode),
+            'postcode' => null,
+            'country' => 'United States',
+        ];
+    }
+
+    /**
+     * Map Google Places types to our result_type values.
+     */
+    protected function mapGoogleTypesToResultType(array $types): string
+    {
+        if (in_array('street_address', $types, true) || in_array('premise', $types, true)) {
+            return 'address';
+        }
+        if (in_array('route', $types, true)) {
+            return 'street';
+        }
+        if (in_array('postal_code', $types, true)) {
+            return 'postcode';
+        }
+        if (in_array('locality', $types, true) || in_array('sublocality', $types, true)) {
+            return 'place';
+        }
+        if (in_array('geocode', $types, true)) {
+            return 'address';
+        }
+        return 'address';
     }
 
     /**
