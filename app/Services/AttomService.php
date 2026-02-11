@@ -364,8 +364,8 @@ class AttomService
         ?string $zip = null,
         bool $forceFresh = false
     ): ?array {
-        $cacheKey = $this->cacheConfig['enabled'] 
-            ? "attom:fetch:raw:" . md5("{$address}:{$city}:{$state}:{$zip}")
+        $cacheKey = $this->cacheConfig['enabled']
+            ? "attom:fetch:expanded:" . md5("{$address}:{$city}:{$state}:{$zip}")
             : null;
         
         if ($forceFresh && $cacheKey) {
@@ -375,7 +375,7 @@ class AttomService
         $params = $this->buildAddressParams($address, $city, $state, $zip);
 
         return $this->makeRequest(
-            '/propertyapi/v1.0.0/property/detail',
+            '/propertyapi/v1.0.0/property/expandedprofile',
             'GET',
             $params,
             $cacheKey,
@@ -391,8 +391,8 @@ class AttomService
         string $fullAddress,
         bool $forceFresh = false
     ): ?array {
-        $cacheKey = $this->cacheConfig['enabled'] 
-            ? "attom:fetch:full:" . md5($fullAddress)
+        $cacheKey = $this->cacheConfig['enabled']
+            ? "attom:fetch:expanded:full:" . md5($fullAddress)
             : null;
         
         if ($forceFresh && $cacheKey) {
@@ -402,7 +402,7 @@ class AttomService
         $params = ['address' => trim($fullAddress)];
 
         return $this->makeRequest(
-            '/propertyapi/v1.0.0/property/detail',
+            '/propertyapi/v1.0.0/property/expandedprofile',
             'GET',
             $params,
             $cacheKey,
@@ -488,18 +488,18 @@ class AttomService
         bool $forceFresh = false, 
         ?Property $property = null
     ): ?array {
-        $cacheKey = $this->cacheConfig['enabled'] 
-            ? "attom:property:detail:" . md5("{$address}:{$city}:{$state}:{$zip}")
+        $cacheKey = $this->cacheConfig['enabled']
+            ? "attom:property:expanded:" . md5("{$address}:{$city}:{$state}:{$zip}")
             : null;
-        
+
         if ($forceFresh && $cacheKey) {
             Cache::forget($cacheKey);
         }
-        
+
         $params = $this->buildAddressParams($address, $city, $state, $zip);
 
         $data = $this->makeRequest(
-            '/propertyapi/v1.0.0/property/detail',
+            '/propertyapi/v1.0.0/property/expandedprofile',
             'GET',
             $params,
             $cacheKey,
@@ -810,6 +810,8 @@ protected function extractPropertyData(array $data): array
     $utilities = $propertyData['utilities'] ?? [];
     $address = $propertyData['address'] ?? [];
     $identifier = $propertyData['identifier'] ?? [];
+    $sale = $propertyData['sale'] ?? [];
+    $saleAmount = $sale['amount'] ?? [];
 
     // Extract assessment data (handle nested structure)
     $assessedData = $assessment['assessed'] ?? $assessment;
@@ -817,36 +819,36 @@ protected function extractPropertyData(array $data): array
     $taxData = $assessment['tax'] ?? $assessment;
 
     return [
-        // Size information
-        'square_feet' => $buildingSize['bldgsize'] ?? $buildingSize['livingsize'] ?? $buildingSize['universalsize'] ?? null,
-        'gross_size' => $buildingSize['grosssize'] ?? null,
-        'living_size' => $buildingSize['livingsize'] ?? null,
-        'basement_size' => $buildingInterior['bsmtsize'] ?? null,
-        
+        // Size information (camelCase fallbacks for expandedprofile)
+        'square_feet' => $buildingSize['bldgsize'] ?? $buildingSize['bldgSize'] ?? $buildingSize['livingsize'] ?? $buildingSize['livingSize'] ?? $buildingSize['universalsize'] ?? $buildingSize['universalSize'] ?? null,
+        'gross_size' => $buildingSize['grosssize'] ?? $buildingSize['grossSize'] ?? null,
+        'living_size' => $buildingSize['livingsize'] ?? $buildingSize['livingSize'] ?? null,
+        'basement_size' => $buildingInterior['bsmtsize'] ?? $buildingInterior['bsmtSize'] ?? null,
+
         // Lot information
-        'lot_size' => $lot['lotsize2'] ?? null, // in square feet
-        'lot_size_acres' => $lot['lotsize1'] ?? null, // in acres
+        'lot_size' => $lot['lotsize2'] ?? $lot['lotSize2'] ?? null,
+        'lot_size_acres' => $lot['lotsize1'] ?? $lot['lotSize1'] ?? null,
         'lot_depth' => $lot['depth'] ?? null,
         'lot_frontage' => $lot['frontage'] ?? null,
-        'lot_number' => $lot['lotnum'] ?? null,
-        
+        'lot_number' => $lot['lotnum'] ?? $lot['lotNum'] ?? null,
+
         // Basic property info
-        'year_built' => $summary['yearbuilt'] ?? null,
+        'year_built' => $summary['yearbuilt'] ?? $summary['yearBuilt'] ?? null,
         'bedrooms' => $buildingRooms['beds'] ?? null,
-        
-        // Bathroom information - FIXED with correct casing
-        'bathrooms' => $buildingRooms['bathstotal'] ?? null, // Total bathrooms
-        'bathrooms_full' => $buildingRooms['bathsfull'] ?? null, // Full baths
-        'bathrooms_partial' => $buildingRooms['bathspartial'] ?? null, // Half baths
-        'bathrooms_total_decimal' => $this->calculateBathroomDecimal($buildingRooms), // e.g., 2.5
-        
+
+        // Bathroom information (camelCase fallbacks)
+        'bathrooms' => $buildingRooms['bathstotal'] ?? $buildingRooms['bathsTotal'] ?? null,
+        'bathrooms_full' => $buildingRooms['bathsfull'] ?? $buildingRooms['bathsFull'] ?? null,
+        'bathrooms_partial' => $buildingRooms['bathspartial'] ?? $buildingRooms['bathsPartial'] ?? null,
+        'bathrooms_total_decimal' => $this->calculateBathroomDecimal($buildingRooms),
+
         // Property classification
-        'property_type' => $summary['propertyType'] ?? $summary['proptype'] ?? $summary['propclass'] ?? null,
-        'property_subtype' => $summary['propsubtype'] ?? null,
-        'property_class' => $summary['propclass'] ?? null,
+        'property_type' => $summary['propertyType'] ?? $summary['proptype'] ?? $summary['propclass'] ?? $summary['propClass'] ?? null,
+        'property_subtype' => $summary['propsubtype'] ?? $summary['propSubType'] ?? null,
+        'property_class' => $summary['propclass'] ?? $summary['propClass'] ?? null,
         'property_indicator' => $summary['propIndicator'] ?? null,
         'property_land_use' => $summary['propLandUse'] ?? null,
-        
+
         // Valuation data
         'assessed_value' => $assessedData['assdttlvalue'] ?? $assessedData['assdTtlValue'] ?? null,
         'assessed_land_value' => $assessedData['assdlandvalue'] ?? $assessedData['assdLandValue'] ?? null,
@@ -854,63 +856,70 @@ protected function extractPropertyData(array $data): array
         'market_value' => $marketData['mktttlvalue'] ?? $marketData['mktTtlValue'] ?? null,
         'market_land_value' => $marketData['mktlandvalue'] ?? $marketData['mktLandValue'] ?? null,
         'market_improvement_value' => $marketData['mktimprvalue'] ?? $marketData['mktImprValue'] ?? null,
-        
+
         // Tax information
         'tax_amount' => $taxData['taxamt'] ?? $taxData['taxAmt'] ?? null,
         'tax_year' => $taxData['taxyear'] ?? $taxData['taxYear'] ?? null,
-        'tax_code_area' => $area['taxcodearea'] ?? null,
-        
+        'tax_code_area' => $area['taxcodearea'] ?? $area['taxCodeArea'] ?? null,
+
         // Building details
         'rooms_total' => $buildingRooms['roomsTotal'] ?? null,
         'stories' => $building['summary']['levels'] ?? null,
         'building_type' => $building['summary']['bldgType'] ?? null,
         'architectural_style' => $building['summary']['archStyle'] ?? null,
-        'construction_type' => $buildingConstruction['constructiontype'] ?? null,
+        'construction_type' => $buildingConstruction['constructiontype'] ?? $buildingConstruction['constructionType'] ?? null,
         'construction_condition' => $buildingConstruction['condition'] ?? null,
         'construction_quality' => $building['summary']['quality'] ?? null,
         'frame_type' => $buildingConstruction['frameType'] ?? null,
         'wall_type' => $buildingConstruction['wallType'] ?? null,
-        'basement_type' => $buildingInterior['bsmttype'] ?? null,
-        
-        // Utilities
-        'heating_type' => $utilities['heatingtype'] ?? null,
-        'cooling_type' => $utilities['coolingtype'] ?? null,
-        'pool_type' => $lot['pooltype'] ?? null,
-        
+        'basement_type' => $buildingInterior['bsmttype'] ?? $buildingInterior['bsmtType'] ?? null,
+
+        // Utilities (camelCase fallbacks)
+        'heating_type' => $utilities['heatingtype'] ?? $utilities['heatingType'] ?? null,
+        'heating_fuel' => $utilities['heatingfuel'] ?? $utilities['heatingFuel'] ?? null,
+        'cooling_type' => $utilities['coolingtype'] ?? $utilities['coolingType'] ?? null,
+        'pool_type' => $lot['pooltype'] ?? $lot['poolType'] ?? null,
+
         // Area information
-        'subdivision' => $area['subdname'] ?? null,
-        'municipality' => $area['munname'] ?? null,
-        'county' => $area['countrysecsubd'] ?? null,
-        'school_district' => $area['schooldist'] ?? null,
-        
+        'zoning_type' => $lot['zoningType'] ?? $area['zoningType'] ?? null,
+        'legal1' => $area['legal1'] ?? $summary['legal1'] ?? null,
+        'subdivision' => $area['subdname'] ?? $area['subdName'] ?? null,
+        'municipality' => $area['munname'] ?? $area['munName'] ?? null,
+        'county' => $area['countrysecsubd'] ?? $area['countrySecSubd'] ?? null,
+        'school_district' => $area['schooldist'] ?? $area['schoolDist'] ?? null,
+
         // Owner information
-        'owner_occupied' => $summary['absenteeInd'] === 'OWNER OCCUPIED',
+        'owner_occupied' => ($summary['absenteeInd'] ?? null) === 'OWNER OCCUPIED',
         'absentee_indicator' => $summary['absenteeInd'] ?? null,
-        
+
+        // Sale information (from expandedprofile)
+        'last_sale_date' => $saleAmount['saleRecDate'] ?? $saleAmount['salerecdate'] ?? null,
+
         // Address and location
         'full_address' => $address['oneLine'] ?? null,
         'street_address' => $address['line1'] ?? null,
         'city_state_zip' => $address['line2'] ?? null,
         'city' => $address['locality'] ?? null,
         'state' => $address['countrySubd'] ?? null,
+        'country' => $address['country'] ?? $address['countryCode'] ?? 'US',
         'zip_code' => $address['postal1'] ?? null,
         'zip_plus_4' => $address['postal2'] ?? null,
         'carrier_route' => $address['postal3'] ?? null,
         'match_code' => $address['matchCode'] ?? null,
-        
+
         'latitude' => isset($location['latitude']) ? (float)$location['latitude'] : null,
         'longitude' => isset($location['longitude']) ? (float)$location['longitude'] : null,
         'location_accuracy' => $location['accuracy'] ?? null,
-        
+
         // Identifiers
         'attom_id' => $identifier['attomId'] ?? $identifier['Id'] ?? null,
         'apn' => $identifier['apn'] ?? null,
         'fips' => $identifier['fips'] ?? null,
-        
+
         // Metadata
         'last_modified' => $propertyData['vintage']['lastModified'] ?? null,
         'published_date' => $propertyData['vintage']['pubDate'] ?? null,
-        
+
         // Keep raw data for reference
         'raw_data' => $data,
     ];
@@ -921,8 +930,8 @@ protected function extractPropertyData(array $data): array
      */
     protected function calculateBathroomDecimal(array $buildingRooms): ?float
     {
-        $full = $buildingRooms['bathsfull'] ?? 0;
-        $partial = $buildingRooms['bathspartial'] ?? 0;
+        $full = $buildingRooms['bathsfull'] ?? $buildingRooms['bathsFull'] ?? 0;
+        $partial = $buildingRooms['bathspartial'] ?? $buildingRooms['bathsPartial'] ?? 0;
         
         if ($full === 0 && $partial === 0) {
             return null;

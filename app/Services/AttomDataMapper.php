@@ -24,25 +24,45 @@ class AttomDataMapper
         $buildingSize = $building['size'] ?? [];
         $buildingRooms = $building['rooms'] ?? [];
         $lot = $propertyData['lot'] ?? [];
+        $area = $propertyData['area'] ?? [];
+        $utilities = $propertyData['utilities'] ?? [];
         $identifier = $propertyData['identifier'] ?? [];
         $address = $propertyData['address'] ?? [];
+        $taxData = ($assessment['tax'] ?? $assessment);
+        $sale = $propertyData['sale'] ?? [];
+        $saleAmount = $sale['amount'] ?? [];
 
         return [
             'square_feet' => $this->extractSquareFeet($buildingSize),
+            'living_size' => $buildingSize['livingsize'] ?? $buildingSize['livingSize'] ?? null,
+            'gross_size' => $buildingSize['grosssize'] ?? $buildingSize['grossSize'] ?? null,
             'lot_size' => $this->extractLotSize($lot),
             'year_built' => $this->extractYearBuilt($summary),
             'bedrooms' => $this->extractBedrooms($buildingRooms),
             'bathrooms' => $this->extractBathrooms($buildingRooms),
+            'bathrooms_total' => $buildingRooms['bathstotal'] ?? $buildingRooms['bathsTotal'] ?? null,
             'property_type' => $this->mapPropertyType($summary),
             'assessed_value' => $this->extractValue($assessment, 'assessedvalue'),
             'market_value' => $this->extractValue($assessment, 'marketvalue'),
-            'tax_amount' => $this->extractValue($assessment, 'taxamount'),
+            'tax_amount' => $this->extractTaxAmount($taxData),
+            'tax_year' => $taxData['taxyear'] ?? $taxData['taxYear'] ?? null,
             'full_address' => $address['oneLine'] ?? null,
+            'one_line' => $address['oneLine'] ?? null,
+            'state' => $address['countrySubd'] ?? null,
+            'country' => $address['country'] ?? $address['countryCode'] ?? 'US',
             'latitude' => $this->extractCoordinate($location, 'latitude'),
             'longitude' => $this->extractCoordinate($location, 'longitude'),
             'attom_id' => $identifier['attomId'] ?? null,
             'fips' => $identifier['fips'] ?? null,
             'apn' => $identifier['apn'] ?? null,
+            'zoning_type' => $lot['zoningType'] ?? $area['zoningType'] ?? null,
+            'legal1' => $area['legal1'] ?? $summary['legal1'] ?? null,
+            'pool_type' => $lot['pooltype'] ?? $lot['poolType'] ?? null,
+            'municipality' => $area['munname'] ?? $area['munName'] ?? null,
+            'cooling_type' => $utilities['coolingtype'] ?? $utilities['coolingType'] ?? null,
+            'heating_type' => $utilities['heatingtype'] ?? $utilities['heatingType'] ?? null,
+            'heating_fuel' => $utilities['heatingfuel'] ?? $utilities['heatingFuel'] ?? null,
+            'last_sale_date' => $saleAmount['saleRecDate'] ?? $saleAmount['salerecdate'] ?? null,
             'raw_data' => $data,
         ];
     }
@@ -281,7 +301,7 @@ class AttomDataMapper
      */
     protected function mapPropertyType(array $summary): ?string
     {
-        $propClass = strtolower($summary['propclass'] ?? $summary['propertyType'] ?? '');
+        $propClass = strtolower($summary['propclass'] ?? $summary['propClass'] ?? $summary['propertyType'] ?? '');
         
         $mapping = [
             'single family' => 'house',
@@ -308,7 +328,7 @@ class AttomDataMapper
      */
     protected function extractSquareFeet(array $buildingSize): ?int
     {
-        $value = $buildingSize['bldgsize'] ?? $buildingSize['livingsize'] ?? $buildingSize['universalsize'] ?? null;
+        $value = $buildingSize['bldgsize'] ?? $buildingSize['bldgSize'] ?? $buildingSize['livingsize'] ?? $buildingSize['livingSize'] ?? $buildingSize['universalsize'] ?? $buildingSize['universalSize'] ?? null;
         return $value ? (int) $value : null;
     }
 
@@ -317,7 +337,7 @@ class AttomDataMapper
      */
     protected function extractLotSize(array $lot): ?int
     {
-        $value = $lot['lotsize2'] ?? $lot['lotsize1'] ?? null;
+        $value = $lot['lotsize2'] ?? $lot['lotSize2'] ?? $lot['lotsize1'] ?? $lot['lotSize1'] ?? null;
         return $value ? (int) $value : null;
     }
 
@@ -326,7 +346,7 @@ class AttomDataMapper
      */
     protected function extractYearBuilt(array $summary): ?int
     {
-        $value = $summary['yearbuilt'] ?? null;
+        $value = $summary['yearbuilt'] ?? $summary['yearBuilt'] ?? null;
         return $value ? (int) $value : null;
     }
 
@@ -344,7 +364,7 @@ class AttomDataMapper
      */
     protected function extractBathrooms(array $buildingRooms): ?int
     {
-        $value = $buildingRooms['bathstotal'] ?? $buildingRooms['bathsfull'] ?? $buildingRooms['baths'] ?? null;
+        $value = $buildingRooms['bathstotal'] ?? $buildingRooms['bathsTotal'] ?? $buildingRooms['bathsfull'] ?? $buildingRooms['bathsFull'] ?? $buildingRooms['baths'] ?? null;
         return $value ? (int) $value : null;
     }
 
@@ -363,6 +383,21 @@ class AttomDataMapper
             $value = preg_replace('/[^0-9.-]/', '', $value);
         }
         
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    /**
+     * Extract tax amount from tax data
+     */
+    protected function extractTaxAmount(array $taxData): ?float
+    {
+        $value = $taxData['taxamt'] ?? $taxData['taxAmt'] ?? $taxData['taxamount'] ?? null;
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_string($value)) {
+            $value = preg_replace('/[^0-9.-]/', '', $value);
+        }
         return is_numeric($value) ? (float) $value : null;
     }
 

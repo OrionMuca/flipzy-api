@@ -213,6 +213,42 @@ class PropertyEnrichmentService
         if (isset($data['longitude']) && !$property->longitude) {
             $updates['longitude'] = $data['longitude'];
         }
+        if (isset($data['zoning_type']) && !$property->zoning_type) {
+            $updates['zoning_type'] = $data['zoning_type'];
+        }
+        if (isset($data['pool_type']) && !$property->pool_type) {
+            $updates['pool_type'] = $data['pool_type'];
+        }
+        if (isset($data['municipality']) && !$property->municipality) {
+            $updates['municipality'] = $data['municipality'];
+        }
+        if (isset($data['legal1']) && !$property->legal1) {
+            $updates['legal1'] = $data['legal1'];
+        }
+        if (isset($data['cooling_type']) && !$property->cooling_type) {
+            $updates['cooling_type'] = $data['cooling_type'];
+        }
+        if (isset($data['heating_fuel']) && !$property->heating_fuel) {
+            $updates['heating_fuel'] = $data['heating_fuel'];
+        }
+        if (isset($data['heating_type']) && !$property->heating_type) {
+            $updates['heating_type'] = $data['heating_type'];
+        }
+        if (isset($data['last_sale_date']) && !$property->last_sale_date) {
+            $updates['last_sale_date'] = $data['last_sale_date'];
+        }
+        if (isset($data['living_size']) && !$property->living_size) {
+            $updates['living_size'] = $data['living_size'];
+        }
+        if (isset($data['gross_size']) && !$property->gross_size) {
+            $updates['gross_size'] = $data['gross_size'];
+        }
+        if (isset($data['tax_amount']) && !$property->tax_amount) {
+            $updates['tax_amount'] = $data['tax_amount'];
+        }
+        if (isset($data['tax_year']) && !$property->tax_year) {
+            $updates['tax_year'] = $data['tax_year'];
+        }
 
         if (!empty($updates)) {
             $property->update($updates);

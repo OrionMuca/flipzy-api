@@ -319,6 +319,18 @@ class PropertySeedingService
                 'bathrooms' => $mappedData['bathrooms'],
                 'square_feet' => $mappedData['square_feet'],
                 'lot_size' => $mappedData['lot_size'],
+                'zoning_type' => $mappedData['zoning_type'] ?? null,
+                'pool_type' => $mappedData['pool_type'] ?? null,
+                'municipality' => $mappedData['municipality'] ?? null,
+                'legal1' => $mappedData['legal1'] ?? null,
+                'cooling_type' => $mappedData['cooling_type'] ?? null,
+                'heating_fuel' => $mappedData['heating_fuel'] ?? null,
+                'heating_type' => $mappedData['heating_type'] ?? null,
+                'last_sale_date' => $mappedData['last_sale_date'] ?? null,
+                'living_size' => $mappedData['living_size'] ?? null,
+                'gross_size' => $mappedData['gross_size'] ?? null,
+                'tax_amount' => $mappedData['tax_amount'] ?? null,
+                'tax_year' => $mappedData['tax_year'] ?? null,
                 'year_built' => $mappedData['year_built'],
                 'condition' => 'fair',
                 'asking_price' => $mappedData['assessed_value'] ?? $mappedData['market_value'] ?? 0,
@@ -467,6 +479,42 @@ class PropertySeedingService
         }
         if (isset($data['longitude']) && !$property->longitude) {
             $updates['longitude'] = $data['longitude'];
+        }
+        if (isset($data['zoning_type']) && !$property->zoning_type) {
+            $updates['zoning_type'] = $data['zoning_type'];
+        }
+        if (isset($data['pool_type']) && !$property->pool_type) {
+            $updates['pool_type'] = $data['pool_type'];
+        }
+        if (isset($data['municipality']) && !$property->municipality) {
+            $updates['municipality'] = $data['municipality'];
+        }
+        if (isset($data['legal1']) && !$property->legal1) {
+            $updates['legal1'] = $data['legal1'];
+        }
+        if (isset($data['cooling_type']) && !$property->cooling_type) {
+            $updates['cooling_type'] = $data['cooling_type'];
+        }
+        if (isset($data['heating_fuel']) && !$property->heating_fuel) {
+            $updates['heating_fuel'] = $data['heating_fuel'];
+        }
+        if (isset($data['heating_type']) && !$property->heating_type) {
+            $updates['heating_type'] = $data['heating_type'];
+        }
+        if (isset($data['last_sale_date']) && !$property->last_sale_date) {
+            $updates['last_sale_date'] = $data['last_sale_date'];
+        }
+        if (isset($data['living_size']) && !$property->living_size) {
+            $updates['living_size'] = $data['living_size'];
+        }
+        if (isset($data['gross_size']) && !$property->gross_size) {
+            $updates['gross_size'] = $data['gross_size'];
+        }
+        if (isset($data['tax_amount']) && !$property->tax_amount) {
+            $updates['tax_amount'] = $data['tax_amount'];
+        }
+        if (isset($data['tax_year']) && !$property->tax_year) {
+            $updates['tax_year'] = $data['tax_year'];
         }
 
         if (!empty($updates)) {
