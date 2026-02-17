@@ -763,13 +763,13 @@ class AttomService
      * Build address parameters for API request
      */
     protected function buildAddressParams(
-        string $address, 
-        ?string $city = null, 
-        ?string $state = null, 
+        string $address,
+        ?string $city = null,
+        ?string $state = null,
         ?string $zip = null
     ): array {
         $params = ['address1' => trim($address)];
-        
+
         if ($city && $state) {
             $params['address2'] = trim($city) . ', ' . trim($state);
             if ($zip) {
@@ -780,7 +780,7 @@ class AttomService
         } elseif ($state) {
             $params['address2'] = trim($state);
         }
-        
+
         return $params;
     }
     

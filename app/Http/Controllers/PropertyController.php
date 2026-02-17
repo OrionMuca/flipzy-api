@@ -750,58 +750,18 @@ public function lookup(Request $request): JsonResponse
      */
     protected function parseAddress(string $fullAddress): array
     {
-        // Initialize result
-        $result = [
-            'street' => null,
-            'city' => null,
-            'state' => null,
-            'zip' => null,
-        ];
-
-        // Clean the address
-        $fullAddress = trim($fullAddress);
-
-        // Try to extract ZIP code (5 digits or 5+4 format)
-        if (preg_match('/\b(\d{5}(?:-\d{4})?)\b/', $fullAddress, $zipMatch)) {
-            $result['zip'] = $zipMatch[1];
-            $fullAddress = str_replace($zipMatch[0], '', $fullAddress);
+        // Match standard US format: "STREET, CITY, STATE ZIP"
+        // e.g. "13850 WINDSOR CROWN CT E, JACKSONVILLE, FL 32225"
+        if (preg_match('/^(.+),\s*(.+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/i', trim($fullAddress), $m)) {
+            return [
+                'street' => trim($m[1]),
+                'city'   => trim($m[2]),
+                'state'  => strtoupper(trim($m[3])),
+                'zip'    => $m[4] ?? null,
+            ];
         }
 
-        // Split by comma
-        $parts = array_map('trim', explode(',', $fullAddress));
-        $parts = array_filter($parts); // Remove empty parts
-
-        if (count($parts) >= 3) {
-            // Format: "Street, City, State"
-            $result['street'] = $parts[0];
-            $result['city'] = $parts[1];
-
-            // Last part might be "State ZIP" or just "State"
-            $lastPart = $parts[2];
-
-            // Extract state (2 letter code)
-            if (preg_match('/\b([A-Z]{2})\b/', strtoupper($lastPart), $stateMatch)) {
-                $result['state'] = $stateMatch[1];
-            }
-        } elseif (count($parts) === 2) {
-            // Format: "Street, City State" or "Street, State"
-            $result['street'] = $parts[0];
-
-            // Try to parse "City State" from second part
-            $secondPart = $parts[1];
-            if (preg_match('/^(.+?)\s+([A-Z]{2})$/i', $secondPart, $cityStateMatch)) {
-                $result['city'] = trim($cityStateMatch[1]);
-                $result['state'] = strtoupper($cityStateMatch[2]);
-            } else {
-                // Assume it's just city
-                $result['city'] = $secondPart;
-            }
-        } elseif (count($parts) === 1) {
-            // Only street address provided
-            $result['street'] = $parts[0];
-        }
-
-        return $result;
+        return ['street' => trim($fullAddress), 'city' => null, 'state' => null, 'zip' => null];
     }
 
     /**
