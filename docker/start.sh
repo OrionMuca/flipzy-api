@@ -33,12 +33,10 @@ if ! grep -q "APP_KEY=base64:" .env 2>/dev/null || grep -q "APP_KEY=$" .env 2>/d
     php artisan key:generate --force --no-interaction || true
 fi
 
-# Install Passport keys if they don't exist
+# Generate Passport keys if they don't exist
 if [ ! -f "storage/oauth-private.key" ] || [ ! -f "storage/oauth-public.key" ]; then
-    echo "🔐 Installing Laravel Passport keys..."
+    echo "🔐 Generating Laravel Passport keys..."
     php artisan passport:keys --force --no-interaction || true
-    php artisan passport:install --force --no-interaction || true
-    php artisan passport:client --personal --name="Personal Access Client" --no-interaction || true
 fi
 
 # Ensure password grant client exists

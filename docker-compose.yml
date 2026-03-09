@@ -31,6 +31,8 @@ services:
       - ./storage/app/private:/var/www/html/storage/app/private
       - ./storage/framework:/var/www/html/storage/framework
       - ./storage/logs:/var/www/html/storage/logs
+      - ./storage/oauth-private.key:/var/www/html/storage/oauth-private.key
+      - ./storage/oauth-public.key:/var/www/html/storage/oauth-public.key
       
       - ./bootstrap/cache:/var/www/html/bootstrap/cache
       - ./.env:/var/www/html/.env
