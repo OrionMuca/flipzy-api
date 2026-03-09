@@ -106,6 +106,17 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
+            $existingSubscription = Subscription::where('user_id', $user->id)
+                ->where('status', 'active')
+                ->first();
+
+            if ($existingSubscription) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You already have an active subscription. Please cancel it before subscribing to a new plan.',
+                ], 400);
+            }
+
             $customerId = $this->stripeService->getOrCreateCustomer($user);
 
             // Create Stripe Checkout Session
@@ -118,8 +129,8 @@ class SubscriptionController extends Controller
                     'quantity' => 1,
                 ]],
                 'mode' => 'subscription',
-                'success_url' => $request->input('success_url', url('/subscription/success?session_id={CHECKOUT_SESSION_ID}')),
-                'cancel_url' => $request->input('cancel_url', url('/subscription/cancel')),
+                'success_url' => $request->input('success_url', rtrim(config('app.frontend_url'), '/') . '/subscription/success?session_id={CHECKOUT_SESSION_ID}'),
+                'cancel_url' => $request->input('cancel_url', rtrim(config('app.frontend_url'), '/') . '/subscription/cancel'),
                 'metadata' => [
                     'user_id' => $user->id,
                     'plan_id' => $plan->id,

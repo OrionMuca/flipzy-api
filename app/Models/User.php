@@ -32,6 +32,9 @@ class User extends Authenticatable
         'company_name',
         'photo',
         'stripe_customer_id',
+        'id_verification_status',
+        'id_verified_at',
+        'stripe_identity_session_id',
     ];
 
     /**
@@ -53,6 +56,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'id_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

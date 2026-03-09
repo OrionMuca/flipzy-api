@@ -142,6 +142,10 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
     Route::post('/subscriptions/cancel', [\App\Http\Controllers\SubscriptionController::class, 'cancel']);
     Route::get('/subscriptions/history', [\App\Http\Controllers\SubscriptionController::class, 'history']);
 
+    // Identity verification routes (require auth)
+    Route::post('/identity/create-session', [\App\Http\Controllers\IdentityVerificationController::class, 'createSession']);
+    Route::get('/identity/status', [\App\Http\Controllers\IdentityVerificationController::class, 'status']);
+
     // Notification routes (require auth)
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::get('/notifications/unread-count', [\App\Http\Controllers\NotificationController::class, 'unreadCount']);

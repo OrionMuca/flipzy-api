@@ -54,6 +54,7 @@ class SubscriptionPlanSeeder extends Seeder
                 'has_ai_estimates' => true,
                 'has_api_access' => false,
                 'is_active' => true,
+                'stripe_price_id' => env('STRIPE_PRICE_PREMIUM'), // set in .env after creating in Stripe Dashboard
             ]
         );
 
@@ -78,6 +79,7 @@ class SubscriptionPlanSeeder extends Seeder
                 'has_ai_estimates' => true,
                 'has_api_access' => true,
                 'is_active' => true,
+                'stripe_price_id' => env('STRIPE_PRICE_VIP'), // set in .env after creating in Stripe Dashboard
             ]
         );
 
