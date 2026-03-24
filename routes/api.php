@@ -87,6 +87,9 @@ Route::middleware('auth:api')->prefix('v1')->group(function () {
         Route::delete('/properties/{property}', [\App\Http\Controllers\PropertyController::class, 'destroy']);
         // Investor matches for a property
         Route::get('/properties/{property}/investor-matches', [\App\Http\Controllers\PropertyController::class, 'investorMatches']);
+        // Property publish/unpublish (payment gated)
+        Route::post('/properties/{property}/publish', [\App\Http\Controllers\PropertyController::class, 'publishCheckout']);
+        Route::post('/properties/{property}/unpublish', [\App\Http\Controllers\PropertyController::class, 'unpublish']);
         // Property images & enrichment
         Route::post('/properties/{property}/images', [\App\Http\Controllers\PropertyController::class, 'uploadImages']);
         Route::delete('/properties/{property}/images/{image}', [\App\Http\Controllers\PropertyController::class, 'deleteImage']);

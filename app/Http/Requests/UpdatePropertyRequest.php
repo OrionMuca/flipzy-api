@@ -34,7 +34,8 @@ class UpdatePropertyRequest extends FormRequest
             'title' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
             'property_type' => 'nullable|string|in:house,condo,townhouse,duplex,multi-family',
-            'status' => 'nullable|string|in:active,pending,sold,inactive',
+            // status changes (publish/unpublish) are handled via dedicated endpoints
+            'status' => 'nullable|string|in:pending,sold,inactive',
             
             // Address
             'address' => 'sometimes|required|string|max:255',

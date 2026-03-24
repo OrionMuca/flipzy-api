@@ -25,7 +25,7 @@ class StorePropertyRequest extends FormRequest
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'property_type' => 'nullable|string|in:house,condo,townhouse,duplex,multi-family',
-            'status' => 'nullable|string|in:active,pending,sold,inactive',
+            // status is set automatically to 'draft' — not user-controllable on create
             
             // Address
             'address' => 'required|string|max:255',

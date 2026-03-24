@@ -61,6 +61,7 @@ class Property extends Model
         'is_featured',
         'is_verified',
         'allow_inquiries',
+        'payment_status',
     ];
 
     protected $casts = [
@@ -147,6 +148,22 @@ class Property extends Model
     public function latestRehabEstimate(): HasOne
     {
         return $this->hasOne(PropertyRehabEstimate::class)->latestOfMany('created_at');
+    }
+
+    /**
+     * Get transactions for this property
+     */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * Check if the property publish fee has been paid
+     */
+    public function isPaid(): bool
+    {
+        return $this->payment_status === 'paid';
     }
 
     /**

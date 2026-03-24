@@ -24,6 +24,10 @@ class PropertyService
             $data['country'] = 'US';
         }
         
+        // New properties start as draft/unpaid until publish payment is made
+        $data['status'] = 'draft';
+        $data['payment_status'] = 'unpaid';
+
         // Calculate potential profit if ARV and repair estimate are provided
         if (isset($data['arv']) && isset($data['repair_estimate'])) {
             $data['potential_profit'] = $data['arv'] - $data['asking_price'] - $data['repair_estimate'];

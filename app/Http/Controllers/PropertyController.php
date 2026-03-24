@@ -13,6 +13,7 @@ use App\Models\WholesalerInvestorProfile;
 use App\Services\BuyBoxService;
 use App\Services\PropertyService;
 use App\Services\PropertyEnrichmentService;
+use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +25,8 @@ class PropertyController extends Controller
     public function __construct(
         protected PropertyService $propertyService,
         protected PropertyEnrichmentService $enrichmentService,
-        protected BuyBoxService $buyBoxService
+        protected BuyBoxService $buyBoxService,
+        protected StripeService $stripeService
     ) {}
 
     /**
@@ -1070,6 +1072,161 @@ public function lookup(Request $request): JsonResponse
                 'per_page' => $profiles->perPage(),
                 'total' => $profiles->total(),
             ],
+        ]);
+    }
+
+    /**
+     * Publish a property (requires payment if not already paid)
+     */
+    #[OA\Post(
+        path: "/wholesaler/properties/{id}/publish",
+        summary: "Publish a property",
+        description: "Publish a property listing. If the property hasn't been paid for yet ($199 one-time fee), returns a Stripe Checkout URL. If already paid, publishes immediately. Requires an active subscription.",
+        tags: ["Properties"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string", format: "uuid")
+            ),
+        ],
+        requestBody: new OA\RequestBody(
+            required: false,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: "success_url", type: "string", example: "https://yourapp.com/property/published", description: "URL to redirect after successful payment"),
+                    new OA\Property(property: "cancel_url", type: "string", example: "https://yourapp.com/property/cancel", description: "URL to redirect if user cancels"),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: "Property published or checkout URL returned"),
+            new OA\Response(response: 403, description: "No active subscription or unauthorized"),
+            new OA\Response(response: 500, description: "Server error"),
+        ]
+    )]
+    public function publishCheckout(Request $request, Property $property): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$this->canModifyProperty($property)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized to publish this property',
+            ], 403);
+        }
+
+        if (!$user->hasActiveSubscription()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You need an active subscription before publishing properties. Please subscribe to the $99/month plan first.',
+            ], 403);
+        }
+
+        // If already paid, just publish immediately
+        if ($property->isPaid()) {
+            $property->update(['status' => 'active']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Property published successfully',
+                'data' => new PropertyResource($property->fresh()->load('images', 'wholesaler')),
+            ]);
+        }
+
+        // Property needs payment — create Stripe Checkout Session
+        try {
+            $customerId = $this->stripeService->getOrCreateCustomer($user);
+
+            $stripe = new \Stripe\StripeClient(config('services.stripe.secret_key'));
+            $checkoutSession = $stripe->checkout->sessions->create([
+                'customer' => $customerId,
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price_data' => [
+                        'currency' => 'usd',
+                        'unit_amount' => 19900, // $199.00 in cents
+                        'product_data' => [
+                            'name' => 'Property Listing Fee',
+                            'description' => "Publish: {$property->title} - {$property->address}, {$property->city}, {$property->state}",
+                        ],
+                    ],
+                    'quantity' => 1,
+                ]],
+                'mode' => 'payment',
+                'success_url' => $request->input('success_url', rtrim(config('app.frontend_url'), '/') . '/property/' . $property->id . '/published?session_id={CHECKOUT_SESSION_ID}'),
+                'cancel_url' => $request->input('cancel_url', rtrim(config('app.frontend_url'), '/') . '/property/' . $property->id),
+                'metadata' => [
+                    'user_id' => $user->id,
+                    'property_id' => $property->id,
+                    'type' => 'property_publish',
+                ],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment required to publish property',
+                'data' => [
+                    'requires_payment' => true,
+                    'checkout_url' => $checkoutSession->url,
+                    'session_id' => $checkoutSession->id,
+                    'amount' => 199.00,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Property publish checkout failed', [
+                'user_id' => $user->id,
+                'property_id' => $property->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create checkout session',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+            ], 500);
+        }
+    }
+
+    /**
+     * Unpublish a property (set to draft, keep payment status)
+     */
+    #[OA\Post(
+        path: "/wholesaler/properties/{id}/unpublish",
+        summary: "Unpublish a property",
+        description: "Unpublish a property listing. Sets status to draft. If the property was already paid for, it can be re-published for free.",
+        tags: ["Properties"],
+        security: [["bearerAuth" => []]],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string", format: "uuid")
+            ),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Property unpublished successfully"),
+            new OA\Response(response: 403, description: "Unauthorized"),
+        ]
+    )]
+    public function unpublish(Request $request, Property $property): JsonResponse
+    {
+        if (!$this->canModifyProperty($property)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized to unpublish this property',
+            ], 403);
+        }
+
+        $property->update(['status' => 'draft']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Property unpublished successfully',
+            'data' => new PropertyResource($property->fresh()->load('images', 'wholesaler')),
         ]);
     }
 

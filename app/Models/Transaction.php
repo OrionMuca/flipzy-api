@@ -16,6 +16,7 @@ class Transaction extends Model
     protected $fillable = [
         'user_id',
         'subscription_id',
+        'property_id',
         'type',
         'status',
         'amount',
@@ -57,6 +58,14 @@ class Transaction extends Model
     public function subscription(): BelongsTo
     {
         return $this->belongsTo(Subscription::class);
+    }
+
+    /**
+     * Get the property associated with this transaction
+     */
+    public function property(): BelongsTo
+    {
+        return $this->belongsTo(Property::class);
     }
 
     /**

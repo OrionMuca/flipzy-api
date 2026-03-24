@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Property;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\Transaction;
@@ -143,8 +144,16 @@ class StripeWebhookController extends Controller
      */
     protected function handleCheckoutSessionCompleted($session): void
     {
+        $mode = $session->mode ?? null;
+
+        // Handle one-time property publish payments
+        if ($mode === 'payment' && ($session->metadata->type ?? null) === 'property_publish') {
+            $this->handlePropertyPublishPayment($session);
+            return;
+        }
+
         // Only process subscription-mode checkouts
-        if (($session->mode ?? null) !== 'subscription' || empty($session->subscription)) {
+        if ($mode !== 'subscription' || empty($session->subscription)) {
             return;
         }
 
@@ -231,6 +240,75 @@ class StripeWebhookController extends Controller
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
                 'stripe_subscription_id' => $session->subscription,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Handle property publish payment (one-time $199 fee)
+     */
+    protected function handlePropertyPublishPayment($session): void
+    {
+        $userId = $session->metadata->user_id ?? null;
+        $propertyId = $session->metadata->property_id ?? null;
+
+        if (!$userId || !$propertyId) {
+            Log::warning('Property publish payment: missing metadata', [
+                'session_id' => $session->id,
+            ]);
+            return;
+        }
+
+        $user = User::find($userId);
+        $property = Property::find($propertyId);
+
+        if (!$user || !$property) {
+            Log::error('Property publish payment: user or property not found', [
+                'user_id' => $userId,
+                'property_id' => $propertyId,
+            ]);
+            return;
+        }
+
+        // Idempotency: skip if already paid
+        if ($property->isPaid()) {
+            Log::info('Property already paid, skipping', ['property_id' => $propertyId]);
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            $property->update([
+                'payment_status' => 'paid',
+                'status' => 'active',
+            ]);
+
+            Transaction::create([
+                'user_id' => $user->id,
+                'property_id' => $property->id,
+                'type' => 'one_time',
+                'status' => 'completed',
+                'amount' => ($session->amount_total ?? 19900) / 100,
+                'currency' => $session->currency ?? 'usd',
+                'stripe_payment_intent_id' => $session->payment_intent ?? null,
+                'stripe_customer_id' => $session->customer,
+                'description' => "Property listing fee: {$property->title}",
+                'processed_at' => now(),
+                'metadata' => [
+                    'property_id' => $property->id,
+                    'checkout_session_id' => $session->id,
+                    'type' => 'property_publish',
+                ],
+            ]);
+
+            DB::commit();
+
+            Log::info('Property published after payment', [
+                'property_id' => $property->id,
+                'user_id' => $user->id,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

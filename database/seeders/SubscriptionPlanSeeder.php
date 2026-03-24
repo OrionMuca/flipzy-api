@@ -30,7 +30,7 @@ class SubscriptionPlanSeeder extends Seeder
             'max_messages' => 10,
             'has_ai_estimates' => false,
             'has_api_access' => false,
-            'is_active' => true,
+            'is_active' => false,
         ]);
 
         // Premium Plan
@@ -49,12 +49,12 @@ class SubscriptionPlanSeeder extends Seeder
                     'Priority support',
                     'Advanced analytics',
                 ],
-                'max_properties' => null, // unlimited
-                'max_messages' => null, // unlimited
+                'max_properties' => null,
+                'max_messages' => null,
                 'has_ai_estimates' => true,
                 'has_api_access' => false,
-                'is_active' => true,
-                'stripe_price_id' => env('STRIPE_PRICE_PREMIUM'), // set in .env after creating in Stripe Dashboard
+                'is_active' => false,
+                'stripe_price_id' => env('STRIPE_PRICE_PREMIUM'),
             ]
         );
 
@@ -74,16 +74,40 @@ class SubscriptionPlanSeeder extends Seeder
                     'Dedicated support',
                     'White-label options',
                 ],
-                'max_properties' => null, // unlimited
-                'max_messages' => null, // unlimited
+                'max_properties' => null,
+                'max_messages' => null,
                 'has_ai_estimates' => true,
                 'has_api_access' => true,
-                'is_active' => true,
-                'stripe_price_id' => env('STRIPE_PRICE_VIP'), // set in .env after creating in Stripe Dashboard
+                'is_active' => false,
+                'stripe_price_id' => env('STRIPE_PRICE_VIP'),
             ]
         );
 
-        $this->command->info('Created subscription plans: Free, Premium, VIP');
+        // Basic Plan — $99/month base subscription
+        SubscriptionPlan::updateOrCreate(
+            ['slug' => 'basic'],
+            [
+                'name' => 'Basic',
+                'description' => 'Base subscription for wholesalers. Publish properties for a one-time $199 fee each.',
+                'price' => 99.00,
+                'billing_interval' => 'monthly',
+                'features' => [
+                    'Unlimited property listings',
+                    'Unlimited messaging',
+                    'AI rehab cost estimates',
+                    'Property analytics',
+                    'Investor matching',
+                ],
+                'max_properties' => null,
+                'max_messages' => null,
+                'has_ai_estimates' => true,
+                'has_api_access' => false,
+                'is_active' => true,
+                'stripe_price_id' => env('STRIPE_PRICE_BASIC'),
+            ]
+        );
+
+        $this->command->info('Created subscription plans: Free (inactive), Premium (inactive), VIP (inactive), Basic (active)');
     }
 }
 
