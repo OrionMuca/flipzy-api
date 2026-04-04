@@ -207,6 +207,48 @@ class AttomDataMapper
     }
 
     /**
+     * Map building permits from ATTOM's /property/buildingpermits endpoint.
+     * Structure: property[0].buildingPermits[]
+     */
+    public function mapBuildingPermits(array $data): array
+    {
+        $property = $data['property'] ?? [];
+        if (empty($property)) {
+            return [];
+        }
+
+        $propertyData = $property[0] ?? [];
+        $permits = $propertyData['buildingPermits'] ?? [];
+
+        $mappedPermits = [];
+        foreach ($permits as $permit) {
+            $mappedPermits[] = [
+                'effective_date' => $permit['effectiveDate'] ?? null,
+                'permit_number' => $permit['permitNumber'] ?? null,
+                'status' => $permit['status'] ?? null,
+                'description' => $permit['description'] ?? null,
+                'type' => $permit['type'] ?? null,
+                'project_name' => $permit['projectName'] ?? null,
+                'job_value' => isset($permit['jobValue']) ? (float) $permit['jobValue'] : null,
+                'fees' => isset($permit['fees']) ? (float) $permit['fees'] : null,
+                'business_name' => $permit['businessName'] ?? null,
+                'home_owner_name' => $permit['homeOwnerName'] ?? null,
+                'classifiers' => $permit['classifiers'] ?? [],
+            ];
+        }
+
+        // Sort by effective_date descending (latest first)
+        usort($mappedPermits, function ($a, $b) {
+            return strcmp($b['effective_date'] ?? '', $a['effective_date'] ?? '');
+        });
+
+        return [
+            'total_permits' => count($mappedPermits),
+            'permits' => $mappedPermits,
+        ];
+    }
+
+    /**
      * Merge data from multiple ATTOM endpoints
      */
     public function mergeAttomData(array $detailData, ?array $saleHistoryData = null, ?array $comparableSalesData = null, ?array $eventsData = null): array

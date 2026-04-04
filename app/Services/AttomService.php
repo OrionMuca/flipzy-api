@@ -631,12 +631,44 @@ class AttomService
     }
 
     /**
+     * Get building permits for a property from ATTOM's dedicated buildingpermits endpoint.
+     * Returns richer permit data than the allevents endpoint.
+     */
+    public function getBuildingPermits(
+        string $address,
+        ?string $city = null,
+        ?string $state = null,
+        ?string $zip = null,
+        bool $forceFresh = false,
+        ?Property $property = null
+    ): ?array {
+        $cacheKey = $this->cacheConfig['enabled']
+            ? "attom:buildingpermits:" . md5("{$address}:{$city}:{$state}:{$zip}")
+            : null;
+
+        if ($forceFresh && $cacheKey) {
+            Cache::forget($cacheKey);
+        }
+
+        $params = $this->buildAddressParams($address, $city, $state, $zip);
+
+        return $this->makeRequest(
+            '/propertyapi/v1.0.0/property/buildingpermits',
+            'GET',
+            $params,
+            $cacheKey,
+            $forceFresh,
+            $property
+        );
+    }
+
+    /**
      * Get property snapshot
      */
     public function getPropertySnapshot(
-        string $address, 
-        ?string $city = null, 
-        ?string $state = null, 
+        string $address,
+        ?string $city = null,
+        ?string $state = null,
         bool $forceFresh = false, 
         ?Property $property = null
     ): ?array {

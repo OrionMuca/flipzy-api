@@ -530,7 +530,7 @@ public function preview(Request $request): JsonResponse
         'state' => 'nullable|string|max:2',
         'zip_code' => 'nullable|string|max:10',
         'endpoints' => 'nullable|array',
-        'endpoints.*' => 'string|in:detail,sale_history,comparable_sales,events,snapshot',
+        'endpoints.*' => 'string|in:detail,sale_history,comparable_sales,events,building_permits,snapshot',
         'force_fresh' => 'nullable|boolean',
         'extract' => 'nullable|boolean',
     ]);

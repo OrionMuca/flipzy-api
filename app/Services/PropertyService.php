@@ -45,6 +45,21 @@ class PropertyService
             $rehabEstimatePayload = json_decode($rehabEstimatePayload, true) ?: null;
         }
 
+        // Extract building permits from frontend (passed through from ATTOM lookup/preview)
+        $buildingPermits = $data['building_permits'] ?? null;
+        unset($data['building_permits']);
+        if (is_string($buildingPermits)) {
+            $buildingPermits = json_decode($buildingPermits, true) ?: null;
+        }
+
+        // Store building permits as attom_property_events (from ATTOM /property/buildingpermits endpoint)
+        if (!empty($buildingPermits) && is_array($buildingPermits)) {
+            $data['attom_property_events'] = [
+                'total_permits' => count($buildingPermits),
+                'permits' => $buildingPermits,
+            ];
+        }
+
         $property = Property::create($data);
 
         // Upload images if provided
@@ -123,6 +138,19 @@ class PropertyService
         $images = $data['images'] ?? [];
         $primaryImageIndex = $data['primary_image_index'] ?? null;
         unset($data['images'], $data['primary_image_index']);
+
+        // Extract building permits and store as attom_property_events
+        $buildingPermits = $data['building_permits'] ?? null;
+        unset($data['building_permits']);
+        if (is_string($buildingPermits)) {
+            $buildingPermits = json_decode($buildingPermits, true) ?: null;
+        }
+        if (!empty($buildingPermits) && is_array($buildingPermits)) {
+            $data['attom_property_events'] = [
+                'total_permits' => count($buildingPermits),
+                'permits' => $buildingPermits,
+            ];
+        }
 
         $property->update($data);
 

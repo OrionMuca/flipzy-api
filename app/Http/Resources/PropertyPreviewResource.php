@@ -94,7 +94,10 @@ class PropertyPreviewResource extends JsonResource
                 'gross_size' => $data['gross_size'] ?? null,
                 'last_sale_date' => $data['last_sale_date'] ?? null,
             ],
-            
+
+            // Building permits (from ATTOM /property/buildingpermits endpoint)
+            'building_permits' => $this->extractPermits($data['building_permits'] ?? null),
+
             // Metadata
             'created_at' => null,
             'updated_at' => null,
@@ -160,6 +163,21 @@ class PropertyPreviewResource extends JsonResource
         return 'fair'; // Default
     }
     
+    /**
+     * Extract permits array from mapped building permits data.
+     * Already sorted by effective_date desc in AttomDataMapper.
+     */
+    protected function extractPermits(?array $buildingPermits): ?array
+    {
+        if (empty($buildingPermits)) {
+            return null;
+        }
+
+        $permits = $buildingPermits['permits'] ?? [];
+
+        return !empty($permits) ? $permits : null;
+    }
+
     /**
      * Cast to integer, handling null
      */

@@ -132,6 +132,7 @@ class PropertyEnrichmentService
                     'sale_history' => $this->attomService->getSaleHistory($address, $city, $state, $zip, $forceFresh, null),
                     'comparable_sales' => $this->attomService->getComparableSales($address, $city, $state, $zip, [], $forceFresh, null),
                     'events' => $this->attomService->getPropertyEvents($address, $city, $state, $zip, $forceFresh, null),
+                    'building_permits' => $this->attomService->getBuildingPermits($address, $city, $state, $zip, $forceFresh, null),
                     'snapshot' => $this->attomService->getPropertySnapshot($address, $city, $state, $forceFresh, null),
                     default => null,
                 };
@@ -153,6 +154,7 @@ class PropertyEnrichmentService
 
     /**
      * Fetch and extract property data (returns clean formatted data)
+     * Also fetches property events (building permits, liens, etc.) in the same call.
      */
     public function fetchAndExtractPropertyData(
         string $address,
@@ -162,13 +164,38 @@ class PropertyEnrichmentService
         bool $forceFresh = false
     ): ?array {
         try {
-            return $this->attomService->fetchAndExtractPropertyData(
-                $address, 
-                $city, 
-                $state, 
-                $zip, 
+            $data = $this->attomService->fetchAndExtractPropertyData(
+                $address,
+                $city,
+                $state,
+                $zip,
                 $forceFresh
             );
+
+            if (!$data) {
+                return null;
+            }
+
+            // Also fetch building permits from ATTOM's dedicated buildingpermits endpoint
+            try {
+                $permitsRaw = $this->attomService->getBuildingPermits(
+                    $address, $city, $state, $zip, $forceFresh, null
+                );
+
+                if ($permitsRaw) {
+                    $mapper = new \App\Services\AttomDataMapper();
+                    $mappedPermits = $mapper->mapBuildingPermits($permitsRaw);
+                    $data['building_permits'] = $mappedPermits;
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to fetch building permits during lookup', [
+                    'address' => $address,
+                    'error' => $e->getMessage(),
+                ]);
+                // Non-fatal: property data is still returned without permits
+            }
+
+            return $data;
         } catch (\Exception $e) {
             Log::error('Failed to fetch and extract property data', [
                 'address' => $address,

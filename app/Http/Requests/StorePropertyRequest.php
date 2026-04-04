@@ -15,6 +15,37 @@ class StorePropertyRequest extends FormRequest
     }
 
     /**
+     * Flatten the "details" object into top-level fields so the frontend can
+     * send either flat fields or a nested details object (or both).
+     * Top-level values take precedence over values inside details.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('details') && is_array($this->input('details'))) {
+            $details = $this->input('details');
+
+            // Only merge detail fields that are NOT already present at the top level
+            $detailKeys = [
+                'bedrooms', 'bathrooms', 'square_feet', 'lot_size', 'year_built',
+                'condition', 'living_size', 'gross_size', 'zoning_type', 'pool_type',
+                'municipality', 'legal1', 'cooling_type', 'heating_fuel', 'heating_type',
+                'last_sale_date', 'tax_amount', 'tax_year',
+            ];
+
+            $merged = [];
+            foreach ($detailKeys as $key) {
+                if (array_key_exists($key, $details) && !$this->has($key)) {
+                    $merged[$key] = $details[$key];
+                }
+            }
+
+            if (!empty($merged)) {
+                $this->merge($merged);
+            }
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
@@ -26,7 +57,7 @@ class StorePropertyRequest extends FormRequest
             'description' => 'nullable|string',
             'property_type' => 'nullable|string|in:house,condo,townhouse,duplex,multi-family',
             // status is set automatically to 'draft' — not user-controllable on create
-            
+
             // Address
             'address' => 'required|string|max:255',
             'city' => 'required|string|max:100',
@@ -35,7 +66,7 @@ class StorePropertyRequest extends FormRequest
             'country' => 'nullable|string|size:2',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            
+
             // Property Details
             'bedrooms' => 'nullable|integer|min:0|max:20',
             'bathrooms' => 'nullable|numeric|min:0|max:20',
@@ -43,17 +74,31 @@ class StorePropertyRequest extends FormRequest
             'lot_size' => 'nullable|integer|min:0',
             'year_built' => 'nullable|integer|min:1800|max:' . (date('Y') + 1),
             'condition' => 'nullable|string|in:excellent,good,fair,poor',
-            
+
+            // Extended property details (from ATTOM enrichment or frontend)
+            'living_size' => 'nullable|integer|min:0',
+            'gross_size' => 'nullable|integer|min:0',
+            'zoning_type' => 'nullable|string|max:100',
+            'pool_type' => 'nullable|string|max:100',
+            'municipality' => 'nullable|string|max:100',
+            'legal1' => 'nullable|string|max:255',
+            'cooling_type' => 'nullable|string|max:100',
+            'heating_fuel' => 'nullable|string|max:100',
+            'heating_type' => 'nullable|string|max:100',
+            'last_sale_date' => 'nullable|date',
+            'tax_amount' => 'nullable|numeric|min:0',
+            'tax_year' => 'nullable|integer|min:1900|max:' . (date('Y') + 1),
+
             // Financial
             'asking_price' => 'required|numeric|min:0',
             'arv' => 'nullable|numeric|min:0',
             'repair_estimate' => 'nullable|numeric|min:0',
-            
+
             // Flags
             'is_featured' => 'nullable|boolean',
             'is_verified' => 'nullable|boolean',
             'allow_inquiries' => 'nullable|boolean',
-            
+
             // Images
             'images' => 'nullable|array|max:10',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max per image
@@ -67,6 +112,21 @@ class StorePropertyRequest extends FormRequest
             'rehab_estimate.property_data' => 'nullable|array',
             'rehab_estimate.notes' => 'nullable|string',
             'rehab_estimate.tokens_used' => 'nullable|integer|min:0',
+
+            // Building permits from ATTOM (passed through from lookup/preview). May be array or JSON string (multipart).
+            'building_permits' => 'nullable',
+            'building_permits.*' => 'nullable|array',
+            'building_permits.*.effective_date' => 'nullable|string',
+            'building_permits.*.permit_number' => 'nullable|string',
+            'building_permits.*.status' => 'nullable|string',
+            'building_permits.*.description' => 'nullable|string',
+            'building_permits.*.type' => 'nullable|string',
+            'building_permits.*.project_name' => 'nullable|string',
+            'building_permits.*.job_value' => 'nullable|numeric',
+            'building_permits.*.fees' => 'nullable|numeric',
+            'building_permits.*.business_name' => 'nullable|string',
+            'building_permits.*.home_owner_name' => 'nullable|string',
+            'building_permits.*.classifiers' => 'nullable|array',
         ];
     }
 

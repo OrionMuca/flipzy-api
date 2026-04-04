@@ -169,13 +169,24 @@ class PropertyResource extends JsonResource
             return null;
         }
 
-        $permits = $data['categorized']['permits'] ?? [];
+        // New structure: from /property/buildingpermits endpoint (stored via creation flow)
+        if (isset($data['permits'])) {
+            $permits = $data['permits'];
+            if (empty($permits)) {
+                return null;
+            }
+            // Already sorted by effective_date desc in AttomDataMapper
+            return $permits;
+        }
 
-        // Sort by event_date descending (latest first)
+        // Legacy structure: from /allevents/detail endpoint (stored via enrich flow)
+        $permits = $data['categorized']['permits'] ?? [];
+        if (empty($permits)) {
+            return null;
+        }
+
         usort($permits, function ($a, $b) {
-            $dateA = $a['event_date'] ?? '';
-            $dateB = $b['event_date'] ?? '';
-            return strcmp($dateB, $dateA);
+            return strcmp($b['event_date'] ?? $b['effective_date'] ?? '', $a['event_date'] ?? $a['effective_date'] ?? '');
         });
 
         return $permits;

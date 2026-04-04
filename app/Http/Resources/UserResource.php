@@ -22,6 +22,8 @@ class UserResource extends JsonResource
             'company_name' => $this->company_name,
             'photo' => $this->photo ? asset('storage/' . $this->photo) : null,
             'email_verified_at' => $this->email_verified_at,
+            'id_verification_status' => $this->id_verification_status,
+            'id_verified_at' => $this->id_verified_at,
             'roles' => $this->whenLoaded('roles', function () {
                 return $this->roles->pluck('name');
             }),
