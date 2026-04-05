@@ -4,12 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\Property;
 use App\Models\PropertyImage;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Passport\Client;
-use App\Models\Role;
 use Tests\TestCase;
 
 class PropertyTest extends TestCase
@@ -17,18 +17,23 @@ class PropertyTest extends TestCase
     use RefreshDatabase;
 
     protected User $wholesaler;
+
     protected User $admin;
+
     protected User $investor;
+
     protected string $wholesalerToken;
+
     protected string $adminToken;
+
     protected string $investorToken;
 
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Create Passport personal access client for testing
-        $client = new Client();
+        $client = new Client;
         $client->id = (string) \Illuminate\Support\Str::uuid();
         $client->name = 'Laravel Personal Access Client';
         $client->secret = \Illuminate\Support\Facades\Hash::make('test-secret-key');
@@ -36,7 +41,7 @@ class PropertyTest extends TestCase
         $client->grant_types = ['personal_access'];
         $client->revoked = false;
         $client->save();
-        
+
         // Ensure roles exist (with api guard)
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'api']);
         Role::firstOrCreate(['name' => 'investor', 'guard_name' => 'api']);
@@ -102,7 +107,7 @@ class PropertyTest extends TestCase
         $data = $this->getPropertyData();
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->postJson('/api/v1/wholesaler/properties', $data);
 
         $response->assertStatus(201)
@@ -142,7 +147,7 @@ class PropertyTest extends TestCase
         $data = $this->getPropertyData();
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->adminToken,
+            'Authorization' => 'Bearer '.$this->adminToken,
         ])->postJson('/api/v1/wholesaler/properties', $data);
 
         $response->assertStatus(201);
@@ -158,7 +163,7 @@ class PropertyTest extends TestCase
         $data = $this->getPropertyData();
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->investorToken,
+            'Authorization' => 'Bearer '.$this->investorToken,
         ])->postJson('/api/v1/wholesaler/properties', $data);
 
         $response->assertStatus(403);
@@ -181,7 +186,7 @@ class PropertyTest extends TestCase
     public function property_creation_requires_required_fields(): void
     {
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->postJson('/api/v1/wholesaler/properties', [
             'title' => 'Test',
             // Missing required fields: address, city, state, zip_code, asking_price
@@ -189,6 +194,121 @@ class PropertyTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['address', 'city', 'state', 'zip_code', 'asking_price']);
+    }
+
+    /** @test */
+    public function property_creation_rejects_duplicate_normalized_address(): void
+    {
+        $base = $this->getPropertyData();
+        $base['address'] = '123 Unique Street';
+        $base['city'] = 'Denver';
+        $base['state'] = 'CO';
+        $base['zip_code'] = '80202';
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
+        ])->postJson('/api/v1/wholesaler/properties', $base)->assertStatus(201);
+
+        $duplicate = $base;
+        $duplicate['title'] = 'Another Listing';
+        $duplicate['address'] = '  123 UNIQUE   STREET ';
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
+        ])->postJson('/api/v1/wholesaler/properties', $duplicate);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['address']);
+    }
+
+    /** @test */
+    public function property_creation_allows_same_address_after_soft_delete(): void
+    {
+        $data = $this->getPropertyData();
+        $data['address'] = '456 Reuse Lane';
+        $data['city'] = 'Austin';
+        $data['state'] = 'TX';
+        $data['zip_code'] = '78701';
+
+        $first = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
+        ])->postJson('/api/v1/wholesaler/properties', $data);
+        $first->assertStatus(201);
+
+        $propertyId = $first->json('data.id');
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
+        ])->deleteJson("/api/v1/wholesaler/properties/{$propertyId}")->assertStatus(200);
+
+        $data['title'] = 'New listing same address';
+        $again = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
+        ])->postJson('/api/v1/wholesaler/properties', $data);
+
+        $again->assertStatus(201);
+    }
+
+    /** @test */
+    public function property_update_rejects_address_that_matches_another_property(): void
+    {
+        $a = $this->getPropertyData();
+        $a['title'] = 'Property A';
+        $a['address'] = '100 Alpha Rd';
+        $a['city'] = 'Phoenix';
+        $a['state'] = 'AZ';
+        $a['zip_code'] = '85001';
+
+        $b = $this->getPropertyData();
+        $b['title'] = 'Property B';
+        $b['address'] = '200 Beta Rd';
+        $b['city'] = 'Tucson';
+        $b['state'] = 'AZ';
+        $b['zip_code'] = '85701';
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
+        ])->postJson('/api/v1/wholesaler/properties', $a)->assertStatus(201);
+
+        $resB = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
+        ])->postJson('/api/v1/wholesaler/properties', $b);
+        $resB->assertStatus(201);
+        $idB = $resB->json('data.id');
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
+        ])->putJson("/api/v1/wholesaler/properties/{$idB}", [
+            'address' => '100 Alpha Rd',
+            'city' => 'Phoenix',
+            'state' => 'AZ',
+            'zip_code' => '85001',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['address']);
+    }
+
+    /** @test */
+    public function property_update_allows_editing_other_fields_when_address_unchanged(): void
+    {
+        $data = $this->getPropertyData();
+        $data['address'] = '300 Gamma St';
+        $data['city'] = 'Seattle';
+        $data['state'] = 'WA';
+        $data['zip_code'] = '98101';
+
+        $created = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
+        ])->postJson('/api/v1/wholesaler/properties', $data);
+        $created->assertStatus(201);
+        $id = $created->json('data.id');
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
+        ])->putJson("/api/v1/wholesaler/properties/{$id}", [
+            'title' => 'Only title changed',
+        ]);
+
+        $response->assertStatus(200);
     }
 
     /** @test */
@@ -201,11 +321,11 @@ class PropertyTest extends TestCase
         // Expected: 300000 - 250000 - 20000 = 30000
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->postJson('/api/v1/wholesaler/properties', $data);
 
         $response->assertStatus(201);
-        
+
         $property = Property::where('title', $data['title'])->first();
         $this->assertEquals(30000.00, $property->potential_profit);
     }
@@ -222,11 +342,11 @@ class PropertyTest extends TestCase
         $data['primary_image_index'] = 0;
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->postJson('/api/v1/wholesaler/properties', $data);
 
         $response->assertStatus(201);
-        
+
         $property = Property::where('title', $data['title'])->first();
         $this->assertCount(2, $property->images);
         $this->assertTrue($property->images->first()->is_primary);
@@ -260,7 +380,7 @@ class PropertyTest extends TestCase
 
         $response->assertStatus(200);
         $images = $response->json('data.images');
-        
+
         // Verify images are returned in order (0, 1, 2)
         $this->assertCount(3, $images);
         $this->assertEquals(0, $images[0]['order']);
@@ -275,7 +395,7 @@ class PropertyTest extends TestCase
         $property = Property::factory()->create([
             'wholesaler_id' => $this->wholesaler->id,
         ]);
-        
+
         // Add initial image
         PropertyImage::factory()->create([
             'property_id' => $property->id,
@@ -288,7 +408,7 @@ class PropertyTest extends TestCase
         ];
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->putJson("/api/v1/wholesaler/properties/{$property->id}", [
             'title' => 'Updated Title',
             'images' => $newImages,
@@ -296,7 +416,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-        
+
         $property->refresh();
         $this->assertCount(3, $property->images); // 1 existing + 2 new
         $this->assertTrue($property->images->where('is_primary', true)->count() === 1);
@@ -557,7 +677,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->putJson("/api/v1/wholesaler/properties/{$property->id}", [
             'title' => 'Updated Title',
             'description' => 'Updated description',
@@ -586,7 +706,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->adminToken,
+            'Authorization' => 'Bearer '.$this->adminToken,
         ])->putJson("/api/v1/wholesaler/properties/{$property->id}", [
             'title' => 'Admin Updated Title',
         ]);
@@ -610,7 +730,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->putJson("/api/v1/wholesaler/properties/{$property->id}", [
             'title' => 'Unauthorized Update',
         ]);
@@ -626,7 +746,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->investorToken,
+            'Authorization' => 'Bearer '.$this->investorToken,
         ])->putJson("/api/v1/wholesaler/properties/{$property->id}", [
             'title' => 'Unauthorized Update',
         ]);
@@ -645,7 +765,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->putJson("/api/v1/wholesaler/properties/{$property->id}", [
             'arv' => 300000,
             'repair_estimate' => 20000,
@@ -667,7 +787,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->deleteJson("/api/v1/wholesaler/properties/{$property->id}");
 
         $response->assertStatus(200)
@@ -689,7 +809,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->adminToken,
+            'Authorization' => 'Bearer '.$this->adminToken,
         ])->deleteJson("/api/v1/wholesaler/properties/{$property->id}");
 
         $response->assertStatus(200);
@@ -709,7 +829,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->deleteJson("/api/v1/wholesaler/properties/{$property->id}");
 
         $response->assertStatus(403);
@@ -726,7 +846,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->investorToken,
+            'Authorization' => 'Bearer '.$this->investorToken,
         ])->deleteJson("/api/v1/wholesaler/properties/{$property->id}");
 
         $response->assertStatus(403);
@@ -749,19 +869,19 @@ class PropertyTest extends TestCase
         Storage::disk('public')->put($image->path, 'fake content');
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->deleteJson("/api/v1/wholesaler/properties/{$property->id}");
 
         $response->assertStatus(200);
-        
+
         // Refresh to get updated relationship
         $property->refresh();
-        
+
         // Images should be deleted (cascade delete)
         $this->assertDatabaseMissing('property_images', [
             'id' => $image->id,
         ]);
-        
+
         // Storage file should be deleted
         $this->assertFalse(Storage::disk('public')->exists($image->path));
     }
@@ -781,7 +901,7 @@ class PropertyTest extends TestCase
         ];
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->postJson("/api/v1/wholesaler/properties/{$property->id}/images", [
             'images' => $images,
             'primary_index' => 0,
@@ -820,7 +940,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->postJson("/api/v1/wholesaler/properties/{$property->id}/images", [
             'images' => [UploadedFile::fake()->image('test.jpg')],
         ]);
@@ -836,7 +956,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->postJson("/api/v1/wholesaler/properties/{$property->id}/images", [
             'images' => [UploadedFile::fake()->create('document.pdf', 1000)],
         ]);
@@ -853,7 +973,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->postJson("/api/v1/wholesaler/properties/{$property->id}/images", [
             'images' => [UploadedFile::fake()->image('large.jpg')->size(6000)], // 6MB > 5MB limit
         ]);
@@ -872,15 +992,15 @@ class PropertyTest extends TestCase
         ]);
         $image = PropertyImage::factory()->create([
             'property_id' => $property->id,
-            'path' => 'properties/' . $property->id . '/image.jpg',
+            'path' => 'properties/'.$property->id.'/image.jpg',
         ]);
 
         // Create the directory structure
-        Storage::disk('public')->makeDirectory('properties/' . $property->id);
+        Storage::disk('public')->makeDirectory('properties/'.$property->id);
         Storage::disk('public')->put($image->path, 'fake content');
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->deleteJson("/api/v1/wholesaler/properties/{$property->id}/images/{$image->id}");
 
         $response->assertStatus(200)
@@ -909,7 +1029,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->deleteJson("/api/v1/wholesaler/properties/{$property2->id}/images/{$image->id}");
 
         $response->assertStatus(404);
@@ -933,7 +1053,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->putJson("/api/v1/wholesaler/properties/{$property->id}/images/{$image2->id}/primary");
 
         $response->assertStatus(200)
@@ -962,7 +1082,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->postJson("/api/v1/wholesaler/properties/{$property->id}/enrich");
 
         $response->assertStatus(202)
@@ -984,7 +1104,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->postJson("/api/v1/wholesaler/properties/{$property->id}/enrich", [
             'sync' => true,
         ]);
@@ -1010,7 +1130,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->postJson("/api/v1/wholesaler/properties/{$property->id}/enrich");
 
         $response->assertStatus(403);
@@ -1048,7 +1168,7 @@ class PropertyTest extends TestCase
 
         // Configure investor buy box
         $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->investorToken,
+            'Authorization' => 'Bearer '.$this->investorToken,
         ])->putJson('/api/v1/investor/buy-box', [
             'preferred_cities' => ['Denver'],
             'preferred_zip_codes' => ['80202'],
@@ -1058,7 +1178,7 @@ class PropertyTest extends TestCase
         ])->assertStatus(200);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->investorToken,
+            'Authorization' => 'Bearer '.$this->investorToken,
         ])->getJson('/api/v1/investor/properties/matches');
 
         $response->assertStatus(200);
@@ -1078,7 +1198,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->getJson('/api/v1/wholesaler/properties/my');
 
         $response->assertStatus(200);
@@ -1094,7 +1214,7 @@ class PropertyTest extends TestCase
     public function investor_cannot_access_wholesaler_my_properties_endpoint(): void
     {
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->investorToken,
+            'Authorization' => 'Bearer '.$this->investorToken,
         ])->getJson('/api/v1/wholesaler/properties/my');
 
         $response->assertStatus(403);
@@ -1141,7 +1261,7 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $this->wholesalerToken,
+            'Authorization' => 'Bearer '.$this->wholesalerToken,
         ])->getJson("/api/v1/wholesaler/properties/{$property->id}/investor-matches");
 
         $response->assertStatus(200);
@@ -1167,10 +1287,9 @@ class PropertyTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $otherToken,
+            'Authorization' => 'Bearer '.$otherToken,
         ])->getJson("/api/v1/wholesaler/properties/{$property->id}/investor-matches");
 
         $response->assertStatus(403);
     }
 }
-

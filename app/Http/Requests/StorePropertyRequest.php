@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Support\PropertyAddressUniqueness;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StorePropertyRequest extends FormRequest
 {
@@ -34,12 +36,12 @@ class StorePropertyRequest extends FormRequest
 
             $merged = [];
             foreach ($detailKeys as $key) {
-                if (array_key_exists($key, $details) && !$this->has($key)) {
+                if (array_key_exists($key, $details) && ! $this->has($key)) {
                     $merged[$key] = $details[$key];
                 }
             }
 
-            if (!empty($merged)) {
+            if (! empty($merged)) {
                 $this->merge($merged);
             }
         }
@@ -72,7 +74,7 @@ class StorePropertyRequest extends FormRequest
             'bathrooms' => 'nullable|numeric|min:0|max:20',
             'square_feet' => 'nullable|integer|min:0',
             'lot_size' => 'nullable|integer|min:0',
-            'year_built' => 'nullable|integer|min:1800|max:' . (date('Y') + 1),
+            'year_built' => 'nullable|integer|min:1800|max:'.(date('Y') + 1),
             'condition' => 'nullable|string|in:excellent,good,fair,poor',
 
             // Extended property details (from ATTOM enrichment or frontend)
@@ -87,7 +89,7 @@ class StorePropertyRequest extends FormRequest
             'heating_type' => 'nullable|string|max:100',
             'last_sale_date' => 'nullable|date',
             'tax_amount' => 'nullable|numeric|min:0',
-            'tax_year' => 'nullable|integer|min:1900|max:' . (date('Y') + 1),
+            'tax_year' => 'nullable|integer|min:1900|max:'.(date('Y') + 1),
 
             // Financial
             'asking_price' => 'required|numeric|min:0',
@@ -128,6 +130,29 @@ class StorePropertyRequest extends FormRequest
             'building_permits.*.home_owner_name' => 'nullable|string',
             'building_permits.*.classifiers' => 'nullable|array',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $conflictId = PropertyAddressUniqueness::findConflictId(
+                (string) $this->input('address'),
+                (string) $this->input('city'),
+                (string) $this->input('state'),
+                (string) $this->input('zip_code'),
+            );
+
+            if ($conflictId !== null) {
+                $validator->errors()->add(
+                    'address',
+                    'A property with this address is already registered.'
+                );
+            }
+        });
     }
 
     /**
